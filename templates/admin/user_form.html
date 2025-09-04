@@ -1,0 +1,65 @@
+{% extends 'layout.html' %}
+
+{% block title %}
+    {% if action == 'create' %}Criar Usuário{% else %}Editar Usuário{% endif %}
+{% endblock %}
+
+{% block content %}
+<h1>{% if action == 'create' %}Criar Novo Usuário{% else %}Editar Usuário{% endif %}</h1>
+<form method="post" class="user-form">
+    <div class="input-group">
+        <label for="email">Email:</label>
+        <input type="email" id="email" name="email" value="{{ user.email if user else '' }}" 
+               required {% if action == 'edit' %}readonly{% endif %}>
+        {% if action == 'edit' %}
+            <small>(O email não pode ser alterado)</small>
+        {% endif %}
+    </div>
+    
+    {% if action == 'create' %}
+    <div class="input-group">
+        <label for="password">Senha:</label>
+        <input type="password" id="password" name="password" required>
+    </div>
+    {% endif %}
+
+    <div class="input-group">
+        <label for="roles">Setores:</label>
+        <select id="roles" name="roles" multiple required>
+            <option value="admin" {% if 'admin' in user.roles %}selected{% endif %}>Admin</option>
+            <option value="diretoria" {% if 'expedicao' in user.roles %}selected{% endif %}>Expedição</option>
+            <option value="comercial" {% if 'separador' in user.roles %}selected{% endif %}>Separador</option>
+            <option value="financeiro" {% if 'conferente' in user.roles %}selected{% endif %}>Conferente</option>
+            <option value="financeiro" {% if 'motorista' in user.roles %}selected{% endif %}>Motorista</option>
+            <option value="default" {% if 'default' in user.roles %}selected{% endif %}>Padrão (sem acesso)</option>
+        </select>
+    </div>
+
+    <div class="input-group">
+        <label for="codigo_vendedor">Código Vendedor:</label>
+        <input type="text" id="codigo_vendedor" name="codigo_vendedor" value="{{ user.codigo_vendedor if user else '' }}">
+    </div>
+
+    <div class="input-group">
+        <label for="nome_vendedor">Nome Vendedor:</label>
+        <input type="text" id="nome_vendedor" name="nome_vendedor" value="{{ user.nome_vendedor if user else '' }}">
+    </div>
+
+    <div class="input-group">
+        <label for="codigo_sap">Código SAP:</label>
+        <input type="text" id="codigo_sap" name="codigo_sap" value="{{ user.codigo_sap if user else '' }}">
+    </div>
+
+    <div class="input-group">
+        <label for="nome_sap">Nome SAP:</label>
+        <input type="text" id="nome_sap" name="nome_sap" value="{{ user.nome_sap if user else '' }}">
+    </div>
+
+    <div class="form-actions">
+        <button type="submit" class="btn">
+            {% if action == 'create' %}Criar Usuário{% else %}Salvar Alterações{% endif %}
+        </button>
+        <a href="{{ url_for('admin.manage_users') }}" class="btn btn-secondary">Cancelar</a>
+    </div>
+</form>
+{% endblock %}

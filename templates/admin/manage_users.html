@@ -1,0 +1,39 @@
+{% extends "layout.html" %}
+
+{% block title %}Gerenciar Usuários{% endblock %}
+
+{% block content %}
+    <h1>Gerenciar Usuários</h1>
+    <a href="{{ url_for('admin.create_user') }}" class="btn">Criar Novo Usuário</a>
+    
+    {% if users %}
+        <table class="table-users">
+            <thead>
+                <tr>
+                    <th>Email</th>
+                    <th>Setores (Roles)</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for uid, user_data in users.items() %}
+                <tr>
+                    <td>{{ user_data.email }}</td>
+                    <td>
+                        {% if user_data.roles %}
+                            {{ user_data.roles.keys()|join(', ') }}
+                        {% else %}
+                            Nenhum
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{{ url_for('admin.edit_user', uid=uid) }}">Editar</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>Nenhum usuário encontrado.</p>
+    {% endif %}
+{% endblock %}

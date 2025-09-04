@@ -1,0 +1,10 @@
+{% extends "layout.html" %}
+
+{% block title %}Página Inicial{% endblock %}
+
+{% block content %}
+    <h1>Bem-vindo ao Painel de Indicadores</h1>
+    <p>Olá, <strong>{{ session.user['email'] }}</strong>!</p>
+    <p>Seu nível de acesso é: <strong>{{ session.user['roles'].keys()|join(', ')|upper }}</strong></p>
+    <p>Use a navegação acima para acessar as áreas permitidas para você.</p>
+{% endblock %}
