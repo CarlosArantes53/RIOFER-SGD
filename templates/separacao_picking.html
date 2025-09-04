@@ -1,9 +1,9 @@
 {% extends "layout.html" %}
 
-{% block title %}Separação do Picking {{ abs_entry }}{% endblock %}
+{% block title %}Separação do Picking {{ abs_entry }} - {{ localizacao }}{% endblock %}
 
 {% block content %}
-    <h1>Separação do Pedido {{ abs_entry }}</h1>
+    <h1>Separação do Pedido {{ abs_entry }} - Localização {{ localizacao }}</h1>
     
     <div class="user-form">
         <h2>Itens do Pedido</h2>
@@ -11,21 +11,25 @@
             <table class="table-users">
                 <thead>
                     <tr>
-                        <th>Selecionar</th>
                         <th>Cód. Item</th>
                         <th>Descrição</th>
                         <th>Qtd. Pedido</th>
+                        <th>Qtd. Separada</th>
+                        <th>Qtd. Pendente</th>
                         <th>Qtd. para o Pacote</th>
+                        <th>Peso (kg)</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for item in items %}
                     <tr>
-                        <td><input type="checkbox" name="itens_pacote" value="{{ item.ItemCode }}|{{ item.ItemName }}"></td>
                         <td>{{ item.ItemCode }}</td>
                         <td>{{ item.ItemName }}</td>
                         <td>{{ item.RelQtty }}</td>
-                        <td><input type="number" step="any" name="quantidade_{{ item.ItemCode }}" placeholder="0"></td>
+                        <td>{{ quantidades_separadas.get(item.ItemCode, 0) }}</td>
+                        <td>{{ item.RelQtty - quantidades_separadas.get(item.ItemCode, 0) }}</td>
+                        <td><input type="number" step="any" name="quantidade_{{ item.ItemCode }}" placeholder="0" class="quantidade-input" data-weight="{{ item.SWeight1 }}"></td>
+                        <td class="peso-calculado">0.00</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -34,6 +38,20 @@
             <div class="input-group" style="margin-top: 20px;">
                 <label for="peso_pacote">Peso do Pacote (kg):</label>
                 <input type="number" step="any" id="peso_pacote" name="peso_pacote" required>
+            </div>
+
+            <div class="input-group">
+                <label for="report">Observação:</label>
+                <textarea id="report" name="report" rows="3"></textarea>
+            </div>
+
+            <div class="input-group">
+                <label for="localizacao">Localização:</label>
+                <select id="localizacao" name="localizacao">
+                    <option value="Doca 1">Doca 1</option>
+                    <option value="Doca 2">Doca 2</option>
+                    <option value="Doca 3">Doca 3</option>
+                </select>
             </div>
 
             <button type="submit" class="btn">Criar Pacote</button>
@@ -45,18 +63,39 @@
         {% if pacotes %}
             {% for pacote in pacotes %}
                 <div class="box-container" style="margin-bottom: 20px;">
-                    <h3>Pacote {{ pacote.id }} - Peso: {{ pacote.peso }} kg</h3>
+                    <h3>Pacote {{ pacote.id }} - Peso: {{ pacote.peso }} kg - Local: {{ pacote.localizacao }}</h3>
+                    {% if pacote.report %}
+                        <p><strong>Observação:</strong> {{ pacote.report }}</p>
+                    {% endif %}
                     <ul>
                         {% for item in pacote.itens %}
                             <li>{{ item.ItemName }} ({{ item.ItemCode }}) - Qtd: {{ item.Quantity }}</li>
                         {% endfor %}
                     </ul>
+                    <a href="#" class="btn btn-secondary">Editar</a>
+                    <a href="#" class="btn btn-danger" onclick="return confirm('Tem certeza que deseja excluir este pacote?');">Excluir</a>
                 </div>
             {% endfor %}
-            <a href="{{ url_for('pedidos.finalizar_separacao', abs_entry=abs_entry) }}" class="btn">Finalizar Separação</a>
+            <a href="{{ url_for('pedidos.finalizar_separacao', abs_entry=abs_entry, localizacao=localizacao) }}" class="btn">Finalizar Separação</a>
         {% else %}
             <p>Nenhum pacote criado ainda.</p>
         {% endif %}
     </div>
 
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const quantidadeInputs = document.querySelectorAll('.quantidade-input');
+        quantidadeInputs.forEach(input => {
+            input.addEventListener('input', (e) => {
+                const weight = parseFloat(e.target.dataset.weight) || 0;
+                const quantity = parseFloat(e.target.value) || 0;
+                const pesoCalculadoCell = e.target.closest('tr').querySelector('.peso-calculado');
+                pesoCalculadoCell.textContent = (weight * quantity).toFixed(2);
+            });
+        });
+    });
+</script>
 {% endblock %}

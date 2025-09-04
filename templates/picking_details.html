@@ -1,9 +1,9 @@
 {% extends "layout.html" %}
 
-{% block title %}Detalhes do Picking {{ abs_entry }}{% endblock %}
+{% block title %}Detalhes do Picking {{ abs_entry }} - {{ localizacao }}{% endblock %}
 
 {% block content %}
-    <h1>Itens do Picking - Pedido {{ abs_entry }}</h1>
+    <h1>Itens do Picking - Pedido {{ abs_entry }} - Localização {{ localizacao }}</h1>
     <a href="{{ url_for('pedidos.listar_pedidos') }}" class="btn btn-secondary">Voltar para a Lista de Pedidos</a>
     
     <table class="table-users">
