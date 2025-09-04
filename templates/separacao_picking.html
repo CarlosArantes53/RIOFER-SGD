@@ -1,0 +1,62 @@
+{% extends "layout.html" %}
+
+{% block title %}Separação do Picking {{ abs_entry }}{% endblock %}
+
+{% block content %}
+    <h1>Separação do Pedido {{ abs_entry }}</h1>
+    
+    <div class="user-form">
+        <h2>Itens do Pedido</h2>
+        <form method="post">
+            <table class="table-users">
+                <thead>
+                    <tr>
+                        <th>Selecionar</th>
+                        <th>Cód. Item</th>
+                        <th>Descrição</th>
+                        <th>Qtd. Pedido</th>
+                        <th>Qtd. para o Pacote</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr>
+                        <td><input type="checkbox" name="itens_pacote" value="{{ item.ItemCode }}|{{ item.ItemName }}"></td>
+                        <td>{{ item.ItemCode }}</td>
+                        <td>{{ item.ItemName }}</td>
+                        <td>{{ item.RelQtty }}</td>
+                        <td><input type="number" step="any" name="quantidade_{{ item.ItemCode }}" placeholder="0"></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            
+            <div class="input-group" style="margin-top: 20px;">
+                <label for="peso_pacote">Peso do Pacote (kg):</label>
+                <input type="number" step="any" id="peso_pacote" name="peso_pacote" required>
+            </div>
+
+            <button type="submit" class="btn">Criar Pacote</button>
+        </form>
+    </div>
+
+    <div style="margin-top: 40px;">
+        <h2>Pacotes Criados</h2>
+        {% if pacotes %}
+            {% for pacote in pacotes %}
+                <div class="box-container" style="margin-bottom: 20px;">
+                    <h3>Pacote {{ pacote.id }} - Peso: {{ pacote.peso }} kg</h3>
+                    <ul>
+                        {% for item in pacote.itens %}
+                            <li>{{ item.ItemName }} ({{ item.ItemCode }}) - Qtd: {{ item.Quantity }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endfor %}
+            <a href="{{ url_for('pedidos.finalizar_separacao', abs_entry=abs_entry) }}" class="btn">Finalizar Separação</a>
+        {% else %}
+            <p>Nenhum pacote criado ainda.</p>
+        {% endif %}
+    </div>
+
+{% endblock %}
