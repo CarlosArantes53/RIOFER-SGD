@@ -11,10 +11,9 @@
 </head>
 <body>
     <nav class="navbar">
-        <a href="{{ url_for('main.home') }}" class="brand">Indicadores</a>
+        <a href="{{ url_for('main.home') }}" class="brand">SGD</a>
         <div class="nav-links">
             {% if session.user %}
-                <a href="{{ url_for('main.home') }}">Home</a>
                 <a href="{{ url_for('pedidos.listar_pedidos') }}">Pedidos</a>
                 {% if 'admin' in session.user.roles %}
                     <a href="{{ url_for('admin.manage_users') }}">Admin</a>

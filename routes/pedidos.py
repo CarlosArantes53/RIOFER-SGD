@@ -8,6 +8,7 @@ pedidos_bp = Blueprint('pedidos', __name__)
 
 PACOTES_PARQUET_PATH = os.getenv('RIOFER_PACOTES_SGD', 'pacotes.parquet')
 SEPARACAO_PARQUET_PATH = os.getenv('RIOFER_SEPARACAO_SGD', 'separacao.parquet')
+PACKING_PARQUET_PATH = os.getenv('RIOFER_PACKING_SGD', 'packing.parquet')
 
 
 def get_pedidos_data():
@@ -22,21 +23,28 @@ def get_pedidos_data():
         return None
 
 def get_separacao_data():
-    """
-    Lê o arquivo parquet de separação. Se o arquivo não existir ou tiver um formato antigo
-    sem a coluna 'Localizacao', ele lida com isso para evitar erros.
-    """
     if not os.path.exists(SEPARACAO_PARQUET_PATH):
         return pd.DataFrame(columns=['AbsEntry', 'Localizacao', 'User', 'StartTime', 'EndTime'])
     try:
         df = pd.read_parquet(SEPARACAO_PARQUET_PATH)
-        # Garante a compatibilidade com arquivos de separação antigos sem a coluna 'Localizacao'
         if 'Localizacao' not in df.columns:
-            df['Localizacao'] = '' # Adiciona a coluna com um valor padrão
+            df['Localizacao'] = ''
         return df
     except Exception as e:
         print(f"Erro ao ler o arquivo de separação parquet: {e}")
         return pd.DataFrame(columns=['AbsEntry', 'Localizacao', 'User', 'StartTime', 'EndTime'])
+
+
+def get_packing_data():
+    """Lê o arquivo parquet de packing."""
+    if not os.path.exists(PACKING_PARQUET_PATH):
+        return pd.DataFrame(columns=['AbsEntry', 'Localizacao'])
+    try:
+        return pd.read_parquet(PACKING_PARQUET_PATH)
+    except Exception as e:
+        print(f"Erro ao ler o arquivo de packing parquet: {e}")
+        return pd.DataFrame(columns=['AbsEntry', 'Localizacao'])
+
 
 @pedidos_bp.route('/pedidos')
 @login_required
@@ -46,12 +54,16 @@ def listar_pedidos():
         abort(500, description="Arquivo de picking não encontrado ou erro ao ler o arquivo.")
 
     df_separacao = get_separacao_data()
+    df_packing = get_packing_data()
 
     pedidos_agrupados = df_picking.groupby(['AbsEntry', 'Localizacao']).first().reset_index()
 
+    packing_finalizado_keys = set()
+    if not df_packing.empty:
+        packing_finalizado_keys = set(zip(df_packing['AbsEntry'], df_packing['Localizacao']))
+
     pedidos_com_status = []
     for index, row in pedidos_agrupados.iterrows():
-        # Filtro para encontrar a separação correspondente
         separacao = df_separacao[(df_separacao['AbsEntry'] == row['AbsEntry']) & (df_separacao['Localizacao'] == row['Localizacao'])]
         status = 'Pendente'
         user = None
@@ -62,7 +74,10 @@ def listar_pedidos():
                 status = f"Em separação por {separacao_info['User']}"
                 user = separacao_info['User']
             else:
-                status = 'Finalizado'
+                if (row['AbsEntry'], row['Localizacao']) in packing_finalizado_keys:
+                    status = 'Packing Finalizado'
+                else:
+                    status = 'Aguardando Packing'
         
         row_dict = row.to_dict()
         row_dict['Status'] = status

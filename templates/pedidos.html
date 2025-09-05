@@ -3,7 +3,6 @@
 {% block title %}Pedidos{% endblock %}
 
 {% block content %}
-    <h1>Pedidos para Picking</h1>
     
     <table class="table-users">
         <thead>
@@ -36,12 +35,20 @@
                 <td>{{ pedido.Status }}</td>
                 <td>
                     <div class="action-buttons">
-                        <a href="{{ url_for('pedidos.visualizar_picking', abs_entry=pedido.AbsEntry, localizacao=pedido.Localizacao) }}" class="btn">Visualizar picking</a>
-                        {% if pedido.Status == 'Finalizado' %}
-                            <a href="{{ url_for('pedidos.iniciar_separacao', abs_entry=pedido.AbsEntry, localizacao=pedido.Localizacao) }}" class="btn">Editar Separação</a>
-                        {% elif pedido.UserInSeparation and pedido.UserInSeparation != session.user['email'] %}
+                        <a href="{{ url_for('pedidos.visualizar_picking', abs_entry=pedido.AbsEntry, localizacao=pedido.Localizacao) }}" class="btn">Visualizar</a>
+                        
+                        {% if 'Em separação' in pedido.Status and pedido.UserInSeparation == session.user['email'] %}
+                             <a href="{{ url_for('pedidos.separar_picking', abs_entry=pedido.AbsEntry, localizacao=pedido.Localizacao) }}" class="btn">Continuar Separação</a>
+                        {% elif 'Em separação' in pedido.Status %}
                             <button class="btn" disabled>Em separação</button>
-                        {% else %}
+
+                        {% elif pedido.Status == 'Aguardando Packing' %}
+                            <a href="{{ url_for('packing.iniciar_packing', abs_entry=pedido.AbsEntry, localizacao=pedido.Localizacao) }}" class="btn">Iniciar Packing</a>
+                        
+                        {% elif pedido.Status == 'Packing Finalizado' %}
+                             <button class="btn" disabled>Concluído</button>
+                        
+                        {% else %} {# Caso padrão para Status == 'Pendente' #}
                             <a href="{{ url_for('pedidos.iniciar_separacao', abs_entry=pedido.AbsEntry, localizacao=pedido.Localizacao) }}" class="btn">Iniciar Separação</a>
                         {% endif %}
                     </div>

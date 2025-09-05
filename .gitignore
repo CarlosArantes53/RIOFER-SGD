@@ -1,7 +1,5 @@
 /.env
 /env
 /__pycache__
-.parquet
-pacotes.parquet
-separacao.parquet
+*.parquet
 *.pyc
