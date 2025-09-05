@@ -1,0 +1,53 @@
+.container {
+    max-width: 1200px;
+    margin: 2rem auto;
+    padding: var(--spacing);
+}
+
+.navbar {
+    background-color: var(--header-footer-bg);
+    padding: 1rem var(--spacing);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background-color 0.3s;
+    box-shadow: var(--box-shadow);
+}
+
+.login-box {
+    width: 400px;
+    margin: 5rem auto;
+    padding: 2rem;
+}
+
+main.container {
+    padding-top: var(--spacing);
+    padding-bottom: var(--spacing);
+}
+
+footer.footer {
+    background-color: var(--header-footer-bg);
+    color: var(--text-secondary);
+    text-align: center;
+    padding: 1rem 0;
+    border-top: 1px solid var(--border-color);
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+}
+
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    margin-top: 2rem;
+}
+
+.filter-container {
+    background-color: var(--secondary-bg);
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 2rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}

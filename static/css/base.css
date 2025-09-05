@@ -1,0 +1,40 @@
+:root {
+    --primary-bg: #1a202c;
+    --secondary-bg: #2d3748;
+    --header-footer-bg: #283141;
+    --text-primary: #f7fafc;
+    --text-secondary: #cbd5e0;
+    --border-color: #4a5568;
+    --accent-color: #EFB410;
+    --accent-text-color: #090a0c;
+    --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --inset-shadow: 1px 1px 2px rgba(255, 255, 255, 0.04), -1px -1px 2px rgba(0, 0, 0, 0.2);
+    --border-radius: 0.75rem;
+    --spacing: 1.5rem;
+}
+
+body[data-theme="light"] {
+    --primary-bg: #f4f7fa;
+    --secondary-bg: #ffffff;
+    --header-footer-bg: #ffffff;
+    --text-primary: #2d3748;
+    --text-secondary: #4a5568;
+    --border-color: #e2e8f0;
+    --accent-color: #EFB410;
+    --accent-text-color: #2c1a1a;
+    background-image: radial-gradient(circle, rgba(15, 15, 60, 0.3) 1px, transparent 1px);
+    background-size: 20px 20px;
+    --box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+    --inset-shadow: 1px 1px 2px rgba(0, 0, 0, 0.04), -1px -1px 2px rgba(255, 255, 255, 0.8);
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--primary-bg);
+    color: var(--text-primary);
+    margin: 0;
+    padding: 0;
+    background-image: radial-gradient(circle, rgba(185, 185, 225, 0.6) 1px, transparent 1px);
+    background-size: 20px 20px;
+    transition: background-color 0.3s, color 0.3s;
+}

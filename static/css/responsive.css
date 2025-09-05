@@ -1,0 +1,34 @@
+@media (max-width: 768px) {
+    .navbar {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .nav-links {
+        margin-top: 1rem;
+        width: 100%;
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .nav-links a {
+        display: block;
+        width: calc(100% - 2rem);
+        margin-bottom: 0.5rem;
+    }
+    
+    #theme-toggle {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+    }
+
+    .login-box {
+        width: 90%;
+        margin: 3rem auto;
+    }
+
+    .table-container {
+        overflow-x: auto;
+    }
+}
