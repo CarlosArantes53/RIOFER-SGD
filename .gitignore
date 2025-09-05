@@ -4,3 +4,6 @@
 .parquet
 pacotes.parquet
 separacao.parquet
+.pyc
+.cpython-313.pyc
+.cpython-313
