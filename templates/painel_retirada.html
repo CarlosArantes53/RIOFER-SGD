@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        :root {
+            /* Cores para o tema claro */
+            --primary-bg-light: #f3f4f6; /* lightGray-100 */
+            --secondary-bg-light: #ffffff; /* white */
+            --text-primary-light: #1f2937; /* gray-800 */
+            --text-secondary-light: #6b7280; /* gray-500 */
+            --border-color-light: #e5e7eb; /* gray-200 */
+
+            /* Cores padrão para o tema escuro (fallback, se não houver light/dark toggle) */
+            --primary-bg: #1a202c; /* blueGray-900 */
+            --secondary-bg: #2d3748; /* blueGray-800 */
+            --text-primary: #f7fafc; /* lightGray-100 */
+            --text-secondary: #cbd5e0; /* blueGray-300 */
+            --border-color: #4a5568; /* blueGray-600 */
+
+            /* Cores de status */
+            --red: #ef4444; /* red-500 */
+            --yellow: #f59e0b; /* amber-500 */
+            --green: #10b981; /* emerald-500 */
+            --accent-color: #0e0955; /* custom amber for titles */
+
+            --spacing: 1.5rem;
+            --border-radius: 0.75rem;
+        }
+
+        /* Aplicar tema claro por padrão ou baseado em uma classe 'light-theme' no body */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--primary-bg-light); /* Usando light theme */
+            color: var(--text-primary-light); /* Usando light theme */
+            margin: 0;
+            padding: var(--spacing);
+        }
+        
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+            gap: var(--spacing);
+        }
+
+        .pedido-card {
+            background-color: var(--secondary-bg-light); /* Usando light theme */
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05); /* Sombra mais suave para light theme */
+            border: 1px solid var(--border-color-light); /* Borda sutil */
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .card-header {
+            display: flex;
+            align-items: flex-start; /* Alinha a bolinha com o topo do texto */
+            gap: 1rem;
+            min-height: 40px; /* Garante que o cabeçalho tenha altura mínima */
+        }
+        
+        .status-dot {
+            flex-shrink: 0; /* Impede que a bolinha diminua */
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-top: 4px; /* Pequeno ajuste para alinhar com o texto */
+        }
+        .dot-red { background-color: var(--red); }
+        .dot-yellow { background-color: var(--yellow); }
+        .dot-green { background-color: var(--green); }
+        
+        .card-title {
+            flex-grow: 1; /* Permite que o título ocupe o espaço restante */
+            min-width: 0; /* Necessário para 'text-overflow' funcionar em flex-items */
+        }
+
+        .card-title h2 {
+            margin: 0;
+            font-size: 1.3rem;
+            white-space: nowrap; /* Impede que o texto quebre */
+            overflow: hidden; /* Esconde o texto que ultrapassa */
+            text-overflow: ellipsis; /* Adiciona "..." para texto abreviado */
+            line-height: 1.2; /* Ajusta a altura da linha */
+            color: var(--text-primary-light); /* Cor do texto no tema claro */
+        }
+        
+        .card-title p {
+            margin: 0;
+            font-size: 0.9rem;
+            color: var(--text-secondary-light); /* Cor do texto secundário no tema claro */
+        }
+
+        .card-content {
+            height: 40px; /* Altura fixa para o conteúdo */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .progress-bar-container {
+            width: 100%;
+            background-color: var(--border-color-light); /* Usando cor de borda para o fundo da barra */
+            border-radius: 1rem;
+            overflow: hidden;
+            height: 25px;
+        }
+
+        .progress-bar {
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-primary); /* Texto escuro para melhor contraste em barras claras */
+            font-weight: bold;
+            font-size: 0.9rem;
+            transition: width 0.5s ease-in-out;
+            border-radius: 1rem;
+            background-color: var(--yellow); /* Cor padrão da barra */
+        }
+        .retirada-info {
+            font-size: 1.2rem;
+            font-weight: bold;
+            text-align: center;
+            color: var(--text-primary-light); /* Cor do texto no tema claro */
+        }
+        .retirada-info strong {
+            color: var(--accent-color); /* Cor de destaque */
+        }
+        .empty-state {
+            text-align: center;
+            font-size: 1.2rem;
+            margin-top: 3rem;
+            color: var(--text-secondary-light);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="grid-container" class="grid-container">
+    </div>
+    <div id="message-container" class="empty-state" style="display: none;"></div>
+
+    <script>
+        function createPedidoCard(pedido) {
+            const statusClasses = {
+                'Pendente': 'dot-red',
+                'Em Separação': 'dot-yellow',
+                'Aguardando Retirada': 'dot-green'
+            };
+
+            let contentHtml = '';
+            if (pedido.Status === 'Em Separação') {
+                contentHtml = `
+                    <div class="progress-bar-container">
+                        <div class="progress-bar" style="width: ${pedido.Percentual}%;">
+                            ${pedido.Percentual}%
+                        </div>
+                    </div>`;
+            } else if (pedido.Status === 'Aguardando Retirada') {
+                contentHtml = `<div class="retirada-info">🚚 Separação concluída! Dirija-se a: <strong>${pedido.Localizacao || 'Verificar'}</strong></div>`;
+            }
+
+            return `
+                <div class="pedido-card">
+                    <div class="card-header">
+                        <div class="status-dot ${statusClasses[pedido.Status] || 'dot-red'}"></div>
+                        <div class="card-title">
+                            <h2>${pedido.CardName}</h2>
+                            <p>Pedido: ${pedido.AbsEntry}</p>
+                        </div>
+                    </div>
+                    <div class="card-content">
+                        ${contentHtml}
+                    </div>
+                </div>`;
+        }
+
+        async function fetchAndUpdateData() {
+            try {
+                const response = await fetch('/api/painel-retirada-data');
+                const data = await response.json();
+                
+                const gridContainer = document.getElementById('grid-container');
+                const messageContainer = document.getElementById('message-container');
+
+                if (data.error) {
+                    gridContainer.innerHTML = '';
+                    messageContainer.textContent = data.error;
+                    messageContainer.style.display = 'block';
+                } else if (data.pedidos && data.pedidos.length > 0) {
+                    messageContainer.style.display = 'none';
+                    gridContainer.innerHTML = data.pedidos.map(createPedidoCard).join('');
+                } else {
+                    gridContainer.innerHTML = '';
+                    messageContainer.textContent = 'Não há pedidos para retirada em separação no momento.';
+                    messageContainer.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Erro ao buscar dados do painel:', error);
+                const messageContainer = document.getElementById('message-container');
+                messageContainer.textContent = 'Erro de conexão. Tentando novamente...';
+                messageContainer.style.display = 'block';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchAndUpdateData(); // Executa a primeira vez ao carregar a página
+            setInterval(fetchAndUpdateData, 60000); // Atualiza a cada 60 segundos
+        });
+    </script>
+</body>
+</html>

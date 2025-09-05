@@ -22,8 +22,8 @@ body[data-theme="light"] {
     --border-color: #e2e8f0;
     --accent-color: #EFB410;
     --accent-text-color: #2c1a1a;
-   /* background-image: radial-gradient(circle, rgba(15, 15, 60, 0.3) 1px, transparent 1px);
-    background-size: 20px 20px;*/
+    background-image: radial-gradient(circle, rgba(15, 15, 60, 0.3) 1px, transparent 1px);
+    background-size: 20px 20px;
     --box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
     --inset-shadow: 1px 1px 2px rgba(0, 0, 0, 0.04), -1px -1px 2px rgba(255, 255, 255, 0.8);
 }
@@ -34,7 +34,7 @@ body {
     color: var(--text-primary);
     margin: 0;
     padding: 0;
-    /*background-image: radial-gradient(circle, rgba(185, 185, 225, 0.6) 1px, transparent 1px);
-    background-size: 20px 20px;*/
+    background-image: radial-gradient(circle, rgba(185, 185, 225, 0.6) 1px, transparent 1px);
+    background-size: 20px 20px;
     transition: background-color 0.3s, color 0.3s;
 }

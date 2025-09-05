@@ -1,3 +1,4 @@
+# app.py
 import os
 from flask import Flask
 from flask_minify import Minify
@@ -14,12 +15,16 @@ def create_app():
     from routes.admin import admin_bp
     from routes.pedidos import pedidos_bp
     from routes.packing import packing_bp
+    # 1. Importe o novo blueprint
+    from routes.painel_retirada import painel_retirada_bp 
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(pedidos_bp)
     app.register_blueprint(packing_bp)
+    # 2. Registre o novo blueprint
+    app.register_blueprint(painel_retirada_bp)
 
     return app
 
