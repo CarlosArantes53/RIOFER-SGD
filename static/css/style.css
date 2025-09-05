@@ -216,8 +216,8 @@ main.container {
 }
 
 .user-form {
-    max-width: 600px;
-    margin: 2rem auto;
+    max-width: max-content;
+    margin: 1rem auto;
 }
 
 .form-actions {
@@ -369,4 +369,71 @@ footer.footer {
 
 .btn-filter:hover {
     background-color: #f0de8a;
+}
+
+/* static/css/style.css */
+
+.btn {
+    display: inline-block;
+    padding: 0.9rem 1.5rem;
+    background-color: var(--accent-color);
+    color: var(--accent-text-color);
+    border: none;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    text-decoration: none;
+    text-align: center;
+    font-weight: bold;
+    transition: transform 0.2s ease-in-out, filter 0.2s;
+    margin: 5px; /* Adicionado para espaçamento */
+}
+
+/* Nova classe para agrupar botões de ação */
+.action-buttons {
+    display: flex;
+    flex-wrap: wrap; /* Permite que os botões quebrem para a próxima linha em telas menores */
+    gap: 10px; /* Espaçamento entre os botões */
+    justify-content: flex-start; /* Alinha os botões à esquerda */
+    align-items: center;
+}
+
+/* static/css/style.css */
+
+/* --- Estilos para Responsividade --- */
+
+/* Para telas menores que 768px (tablets e celulares) */
+@media (max-width: 768px) {
+    .navbar {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .nav-links {
+        margin-top: 1rem;
+        width: 100%;
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .nav-links a {
+        display: block;
+        width: calc(100% - 2rem);
+        margin-bottom: 0.5rem;
+    }
+    
+    #theme-toggle {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+    }
+
+    .login-box {
+        width: 90%;
+        margin: 3rem auto;
+    }
+
+    /* Adiciona rolagem horizontal para tabelas largas */
+    .table-container {
+        overflow-x: auto;
+    }
 }

@@ -35,14 +35,16 @@
                 <td>{{ pedido.Localizacao }}</td>
                 <td>{{ pedido.Status }}</td>
                 <td>
-                    <a href="{{ url_for('pedidos.visualizar_picking', abs_entry=pedido.AbsEntry, localizacao=pedido.Localizacao) }}" class="btn">Visualizar picking</a>
-                    {% if pedido.Status == 'Finalizado' %}
-                        <a href="{{ url_for('pedidos.iniciar_separacao', abs_entry=pedido.AbsEntry, localizacao=pedido.Localizacao) }}" class="btn">Editar Separação</a>
-                    {% elif pedido.UserInSeparation and pedido.UserInSeparation != session.user['email'] %}
-                        <button class="btn" disabled>Em separação</button>
-                    {% else %}
-                        <a href="{{ url_for('pedidos.iniciar_separacao', abs_entry=pedido.AbsEntry, localizacao=pedido.Localizacao) }}" class="btn">Iniciar Separação</a>
-                    {% endif %}
+                    <div class="action-buttons">
+                        <a href="{{ url_for('pedidos.visualizar_picking', abs_entry=pedido.AbsEntry, localizacao=pedido.Localizacao) }}" class="btn">Visualizar picking</a>
+                        {% if pedido.Status == 'Finalizado' %}
+                            <a href="{{ url_for('pedidos.iniciar_separacao', abs_entry=pedido.AbsEntry, localizacao=pedido.Localizacao) }}" class="btn">Editar Separação</a>
+                        {% elif pedido.UserInSeparation and pedido.UserInSeparation != session.user['email'] %}
+                            <button class="btn" disabled>Em separação</button>
+                        {% else %}
+                            <a href="{{ url_for('pedidos.iniciar_separacao', abs_entry=pedido.AbsEntry, localizacao=pedido.Localizacao) }}" class="btn">Iniciar Separação</a>
+                        {% endif %}
+                    </div>
                 </td>
             </tr>
             {% endfor %}
