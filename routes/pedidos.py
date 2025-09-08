@@ -53,18 +53,26 @@ def listar_pedidos():
     if df_picking is None:
         abort(500, description="Arquivo de picking não encontrado ou erro ao ler o arquivo.")
 
+    # Garante que a coluna 'Localizacao' não tenha valores nulos ou vazios que possam quebrar a URL
+    df_picking.dropna(subset=['Localizacao'], inplace=True)
+    df_picking = df_picking[df_picking['Localizacao'].str.strip() != '']
+
     df_separacao = get_separacao_data()
     df_packing = get_packing_data()
-
-    pedidos_agrupados = df_picking.groupby(['AbsEntry', 'Localizacao']).first().reset_index()
 
     packing_finalizado_keys = set()
     if not df_packing.empty:
         packing_finalizado_keys = set(zip(df_packing['AbsEntry'], df_packing['Localizacao']))
 
-    pedidos_com_status = []
-    for index, row in pedidos_agrupados.iterrows():
-        separacao = df_separacao[(df_separacao['AbsEntry'] == row['AbsEntry']) & (df_separacao['Localizacao'] == row['Localizacao'])]
+    pedidos_agrupados_por_absentry = {}
+    
+    unique_pickings = df_picking.drop_duplicates(subset=['AbsEntry', 'Localizacao'])
+
+    for _, row in unique_pickings.iterrows():
+        abs_entry = row['AbsEntry']
+        localizacao = row['Localizacao']
+
+        separacao = df_separacao[(df_separacao['AbsEntry'] == abs_entry) & (df_separacao['Localizacao'] == localizacao)]
         status = 'Pendente'
         user = None
         
@@ -74,17 +82,31 @@ def listar_pedidos():
                 status = f"Em separação por {separacao_info['User']}"
                 user = separacao_info['User']
             else:
-                if (row['AbsEntry'], row['Localizacao']) in packing_finalizado_keys:
+                if (abs_entry, localizacao) in packing_finalizado_keys:
                     status = 'Packing Finalizado'
                 else:
                     status = 'Aguardando Packing'
-        
-        row_dict = row.to_dict()
-        row_dict['Status'] = status
-        row_dict['UserInSeparation'] = user
-        pedidos_com_status.append(row_dict)
 
-    return render_template('pedidos.html', pedidos=pedidos_com_status)
+        location_info = {
+            'Localizacao': localizacao,
+            'Status': status,
+            'UserInSeparation': user
+        }
+
+        if abs_entry not in pedidos_agrupados_por_absentry:
+            pedidos_agrupados_por_absentry[abs_entry] = {
+                'AbsEntry': abs_entry,
+                'CardName': row['CardName'],
+                'U_TU_QuemEntrega': row['U_TU_QuemEntrega'],
+                'U_GI_Cidade': row['U_GI_Cidade'],
+                'locations': [location_info]
+            }
+        else:
+            pedidos_agrupados_por_absentry[abs_entry]['locations'].append(location_info)
+
+    pedidos_finais = list(pedidos_agrupados_por_absentry.values())
+    
+    return render_template('pedidos.html', pedidos_agrupados=pedidos_finais)
 
 @pedidos_bp.route('/picking/<int:abs_entry>/<localizacao>')
 @login_required

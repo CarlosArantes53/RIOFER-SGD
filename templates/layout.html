@@ -15,7 +15,7 @@
         <div class="nav-links">
             {% if session.user %}
                 <a href="{{ url_for('pedidos.listar_pedidos') }}">Pedidos</a>
-                <a href="{{ url_for('painel_retirada.painel_retirada') }}">Painel Retira</a>
+                <a href="{{ url_for('painel_retirada.painel_retirada_view') }}">Painel Retira</a>
                 {% if 'admin' in session.user.roles %}
                     <a href="{{ url_for('admin.manage_users') }}">Admin</a>
                 {% endif %}

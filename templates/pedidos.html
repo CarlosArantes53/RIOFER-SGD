@@ -7,53 +7,61 @@
     <table class="table-users">
         <thead>
             <tr>
+                <th>N° Picking</th>
+                <th>Localização</th>
                 <th>Cliente</th>
-                <th>Nome do Cliente</th>
                 <th>Tipo de Entrega</th>
                 <th>Cidade</th>
-                <th>Localização</th>
                 <th>Status</th>
                 <th>Ações</th>
             </tr>
         </thead>
         <tbody>
-            {% for pedido in pedidos %}
-            <tr>
-                <td>{{ pedido.CardCode }}</td>
-                <td>{{ pedido.CardName }}</td>
-                <td>
-                    {% if pedido['U_TU_QuemEntrega'] == '01' %}
-                        🚚 Entrega
-                    {% elif pedido['U_TU_QuemEntrega'] == '02' %}
-                        📦 Retirada
-                    {% else %}
-                        {{ pedido['U_TU_QuemEntrega'] }}
-                    {% endif %}
-                </td>
-                <td>{{ pedido.U_GI_Cidade }}</td>
-                <td>{{ pedido.Localizacao }}</td>
-                <td>{{ pedido.Status }}</td>
-                <td>
-                    <div class="action-buttons">
-                        <a href="{{ url_for('pedidos.visualizar_picking', abs_entry=pedido.AbsEntry, localizacao=pedido.Localizacao) }}" class="btn">Visualizar</a>
-                        
-                        {% if 'Em separação' in pedido.Status and pedido.UserInSeparation == session.user['email'] %}
-                             <a href="{{ url_for('pedidos.separar_picking', abs_entry=pedido.AbsEntry, localizacao=pedido.Localizacao) }}" class="btn">Continuar Separação</a>
-                        {% elif 'Em separação' in pedido.Status %}
-                            <button class="btn" disabled>Em separação</button>
-
-                        {% elif pedido.Status == 'Aguardando Packing' %}
-                            <a href="{{ url_for('packing.iniciar_packing', abs_entry=pedido.AbsEntry, localizacao=pedido.Localizacao) }}" class="btn">Iniciar Packing</a>
-                        
-                        {% elif pedido.Status == 'Packing Finalizado' %}
-                             <button class="btn" disabled>Concluído</button>
-                        
-                        {% else %} {# Caso padrão para Status == 'Pendente' #}
-                            <a href="{{ url_for('pedidos.iniciar_separacao', abs_entry=pedido.AbsEntry, localizacao=pedido.Localizacao) }}" class="btn">Iniciar Separação</a>
+            {% for grupo in pedidos_agrupados %}
+                {% for local in grupo.locations %}
+                    <tr>
+                        {% if loop.first %}
+                            <td rowspan="{{ grupo.locations|length }}">{{ grupo.AbsEntry }}</td>
                         {% endif %}
-                    </div>
-                </td>
-            </tr>
+                        
+                        <td>{{ local.Localizacao }}</td>
+                        <td>{{ grupo.CardName }}</td>
+                        <td>
+                            {% if grupo['U_TU_QuemEntrega'] == '01' %}
+                                🚚 Entrega
+                            {% elif grupo['U_TU_QuemEntrega'] == '02' %}
+                                📦 Retirada
+                            {% else %}
+                                {{ grupo['U_TU_QuemEntrega'] }}
+                            {% endif %}
+                        </td>
+                        <td>{{ grupo.U_GI_Cidade }}</td>
+                        <td>{{ local.Status }}</td>
+                        <td>
+                            <div class="action-buttons">
+                                <a href="{{ url_for('pedidos.visualizar_picking', abs_entry=grupo.AbsEntry, localizacao=local.Localizacao) }}" class="btn">Visualizar</a>
+                                
+                                {% set status = local.Status %}
+                                {% set user_in_separation = local.UserInSeparation %}
+                                
+                                {% if 'Em separação' in status and user_in_separation == session.user['email'] %}
+                                    <a href="{{ url_for('pedidos.separar_picking', abs_entry=grupo.AbsEntry, localizacao=local.Localizacao) }}" class="btn">Continuar Separação</a>
+                                {% elif 'Em separação' in status %}
+                                    <button class="btn" disabled>Em separação</button>
+
+                                {% elif status == 'Aguardando Packing' %}
+                                    <a href="{{ url_for('packing.iniciar_packing', abs_entry=grupo.AbsEntry, localizacao=local.Localizacao) }}" class="btn">Iniciar Packing</a>
+                                
+                                {% elif status == 'Packing Finalizado' %}
+                                    <button class="btn" disabled>Concluído</button>
+                                
+                                {% else %} {# Caso padrão para Status == 'Pendente' #}
+                                    <a href="{{ url_for('pedidos.iniciar_separacao', abs_entry=grupo.AbsEntry, localizacao=local.Localizacao) }}" class="btn">Iniciar Separação</a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
             {% endfor %}
         </tbody>
     </table>
