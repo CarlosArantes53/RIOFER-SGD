@@ -4,3 +4,5 @@ python-dotenv
 setuptools
 pyarrow
 pandas
+Flask-WTF
+Gunicorn

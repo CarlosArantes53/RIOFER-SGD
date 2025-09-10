@@ -18,10 +18,16 @@
         </thead>
         <tbody>
             {% for grupo in pedidos_agrupados %}
+                {% set outer_loop = loop %}
+                {% set bar_colors = ['#EFB410', '#4a5568'] %} {# gold and gray #}
+                {% set row_colors = ['var(--primary-bg)', 'var(--secondary-bg)'] %}
                 {% for local in grupo.locations %}
-                    <tr>
+                    <tr style="background-color: {{ loop.cycle(row_colors[0], row_colors[1]) if grupo.locations|length > 1 else 0 }};">
                         {% if loop.first %}
-                            <td rowspan="{{ grupo.locations|length }}">{{ grupo.AbsEntry }}</td>
+                            <td rowspan="{{ grupo.locations|length }}" class="abs-entry-cell">
+                                <div class="vertical-bar" style="background-color: {{ bar_colors[outer_loop.index0 % 2] }};"></div>
+                                {{ grupo.AbsEntry }}
+                            </td>
                         {% endif %}
                         
                         <td>{{ local.Localizacao }}</td>
