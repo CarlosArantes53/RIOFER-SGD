@@ -66,7 +66,7 @@ def listar_packing():
             pedido_dict['Status'] = 'Aguardando Início'
         pedidos_com_status.append(pedido_dict)
 
-    return render_template('packing_status.html', pedidos=pedidos_com_status)
+    return render_template('pedidos.html')
 
 # A função iniciar_packing e o resto do arquivo permanecem os mesmos
 @packing_bp.route('/packing/iniciar/<int:abs_entry>/<localizacao>', methods=['GET', 'POST'])

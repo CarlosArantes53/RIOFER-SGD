@@ -351,20 +351,19 @@
     white-space: nowrap;
 }
 
-/* Cores dos Status */
 .status-tag.status-pendente {
     background-color: rgba(239, 68, 68, 0.2);
-    color: #f87171;
+    color: #ff1b1b;
 }
 
 .status-tag.status-em-separação {
     background-color: rgba(245, 158, 11, 0.2);
-    color: #fcd34d;
+    color: #fdc81c;
 }
 
 .status-tag.status-aguardando-packing {
     background-color: rgba(59, 130, 246, 0.2);
-    color: #93c5fd;
+    color: #4099ff;
 }
 
 .status-tag.status-packing-finalizado {
@@ -375,14 +374,13 @@
     background-color: rgba(170, 82, 20, 0.2);
     color: #d6681a;
 }
-/* Ajustes nos filtros para melhor alinhamento */
+
 .filter-container .form-actions {
     margin-top: 0;
 }
 
-/* Melhoras na tela de separação de picking */
 .user-form {
-    max-width: 100%; /* Ocupa a largura do box-container */
+    max-width: 100%;
     margin: 1rem auto;
 }
 

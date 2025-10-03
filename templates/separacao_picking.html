@@ -82,8 +82,8 @@
                         {% endfor %}
                     </ul>
                     <div class="action-buttons" style="margin-top: 1rem;">
-                        <a href="#" class="btn btn-secondary">Editar</a>
-                        <a href="#" class="btn btn-danger" onclick="return confirm('Tem certeza que deseja excluir este pacote?');">Excluir</a>
+                        <a href="{{ url_for('pedidos.editar_pacote_sessao', abs_entry=abs_entry, localizacao=localizacao, pacote_id=pacote.id) }}" class="btn btn-secondary">Editar</a>
+                        <a href="{{ url_for('pedidos.excluir_pacote_sessao', abs_entry=abs_entry, localizacao=localizacao, pacote_id=pacote.id) }}" class="btn btn-danger" onclick="return confirm('Tem certeza que deseja excluir este pacote?');">Excluir</a>
                     </div>
                 </div>
             {% endfor %}

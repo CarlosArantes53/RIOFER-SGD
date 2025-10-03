@@ -1,0 +1,58 @@
+{% extends "layout.html" %}
+
+{% block title %}Editar Pacote {{ pacote.id }}{% endblock %}
+
+{% block content %}
+    <h1>Editar Pacote {{ pacote.id }} do Pedido {{ abs_entry }}</h1>
+    
+    <div class="user-form">
+        <form method="post">
+            <div class="form-grid">
+                <div class="input-group">
+                    <label for="peso_pacote">Peso do Pacote (kg):</label>
+                    <input type="number" step="any" id="peso_pacote" name="peso_pacote" value="{{ pacote.peso }}" required>
+                </div>
+
+                <div class="input-group">
+                    <label for="localizacao">Localização de Entrega:</label>
+                    <select id="localizacao" name="localizacao">
+                        <option value="Doca 1" {% if pacote.localizacao == 'Doca 1' %}selected{% endif %}>Doca 1</option>
+                        <option value="Doca 2" {% if pacote.localizacao == 'Doca 2' %}selected{% endif %}>Doca 2</option>
+                        <option value="Doca 3" {% if pacote.localizacao == 'Doca 3' %}selected{% endif %}>Doca 3</option>
+                    </select>
+                </div>
+
+                <div class="input-group full-width">
+                    <label for="report">Observação:</label>
+                    <textarea id="report" name="report" rows="3">{{ pacote.report }}</textarea>
+                </div>
+            </div>
+
+            <h2 style="margin-top: 2rem;">Itens do Pacote</h2>
+            <p><small>Para remover um item do pacote, altere sua quantidade para 0.</small></p>
+            <table class="table-users">
+                <thead>
+                    <tr>
+                        <th>Cód. Item</th>
+                        <th>Descrição</th>
+                        <th>Quantidade</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in pacote.itens %}
+                    <tr>
+                        <td>{{ item.ItemCode }}</td>
+                        <td>{{ item.ItemName }}</td>
+                        <td><input type="number" step="0.001" min="0" name="quantidade_{{ item.ItemCode }}" value="{{ item.Quantity }}"></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <div style="margin-top: 2rem;">
+                <button type="submit" class="btn">Salvar Alterações</button>
+                <a href="{{ url_for('pedidos.separar_picking', abs_entry=abs_entry, localizacao=localizacao) }}" class="btn btn-secondary">Cancelar</a>
+            </div>
+        </form>
+    </div>
+{% endblock %}

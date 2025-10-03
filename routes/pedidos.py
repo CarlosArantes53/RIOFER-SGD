@@ -52,6 +52,13 @@ def get_packing_data():
         print(f"Erro ao ler o arquivo de packing parquet: {e}")
         return pd.DataFrame(columns=['AbsEntry', 'Localizacao'])
 
+def get_pacotes_data():
+    """Lê os dados dos pacotes do arquivo parquet."""
+    if not os.path.exists(PACOTES_PARQUET_PATH):
+        return pd.DataFrame()
+    return pd.read_parquet(PACOTES_PARQUET_PATH)
+
+
 def strip_accents(text):
     if text is None:
         return ''
@@ -124,9 +131,15 @@ def listar_pedidos():
 
     pedidos_finais = list(pedidos_agrupados_por_absentry.values())
     
-    # Filtering logic
+    # --- LÓGICA DE FILTRO MODIFICADA ---
     filter_cliente = request.args.get('cliente', '').strip()
-    filter_status = request.args.getlist('status')
+
+    # Verifica se o filtro de status foi passado na URL. Se não, aplica o padrão.
+    if 'status' in request.args:
+        filter_status = request.args.getlist('status')
+    else:
+        # Filtro padrão: todos os status, exceto 'Packing Finalizado'
+        filter_status = [s for s in all_statuses if s != 'Packing Finalizado']
 
     if filter_cliente:
         normalized_filter_cliente = strip_accents(filter_cliente.lower())
@@ -138,7 +151,7 @@ def listar_pedidos():
     if filter_status:
         pedidos_finais_filtrados = []
         for pedido in pedidos_finais:
-            # Manter o pedido se alguma de suas localizações corresponder a um dos status filtrados
+            # Mantém o pedido se alguma de suas localizações corresponder a um dos status filtrados
             if any(loc['Status'] in filter_status for loc in pedido['locations']):
                 pedidos_finais_filtrados.append(pedido)
         pedidos_finais = pedidos_finais_filtrados
@@ -147,6 +160,7 @@ def listar_pedidos():
                            pedidos_agrupados=pedidos_finais,
                            all_statuses=sorted(list(all_statuses)),
                            current_filters={'cliente': filter_cliente, 'status': filter_status})
+
 
 @pedidos_bp.route('/picking/<int:abs_entry>')
 @login_required
@@ -187,28 +201,70 @@ def iniciar_separacao(abs_entry, localizacao):
     if 'pickings_in_progress' not in session:
         session['pickings_in_progress'] = {}
 
-    if picking_key not in session['pickings_in_progress']:
-        session['pickings_in_progress'][picking_key] = {
-            'abs_entry': abs_entry,
-            'localizacao': localizacao,
-            'start_time': datetime.now().isoformat(),
-            'pacotes': []
-        }
-        session.modified = True
+    if picking_key in session['pickings_in_progress']:
+         return redirect(url_for('pedidos.separar_picking', abs_entry=abs_entry, localizacao=localizacao))
 
-        if separacao_existente.empty:
-            nova_separacao = pd.DataFrame([{
-                'AbsEntry': abs_entry,
-                'Localizacao': localizacao,
-                'User': session['user']['email'],
-                'StartTime': session['pickings_in_progress'][picking_key]['start_time'],
-                'EndTime': None,
-                'DiscrepancyLog': '',
-                'DiscrepancyReport': ''
-            }])
-            df_separacao = pd.concat([df_separacao, nova_separacao], ignore_index=True)
-            df_separacao.to_parquet(SEPARACAO_PARQUET_PATH, index=False)
+    pacotes_carregados = []
+    is_resuming = False
+    if not separacao_existente.empty:
+        separacao_info = separacao_existente.iloc[0]
+        if not pd.isna(separacao_info['EndTime']) and separacao_info['EndTime'] != '' and separacao_info['DiscrepancyLog']:
+            is_resuming = True
+            df_pacotes = get_pacotes_data()
+            pacotes_do_picking = df_pacotes[(df_pacotes['AbsEntry'] == abs_entry) & (df_pacotes['Localizacao'] == localizacao)]
 
+            if not pacotes_do_picking.empty:
+                pacotes_agrupados = {}
+                df_picking = get_pedidos_data()
+                itens_do_picking = df_picking[(df_picking['AbsEntry'] == abs_entry) & (df_picking['Localizacao'] == localizacao)]
+                itens_do_picking = itens_do_picking.drop_duplicates(subset=['ItemCode']).set_index('ItemCode')
+
+                for _, row in pacotes_do_picking.iterrows():
+                    package_id = row['PackageID']
+                    if package_id not in pacotes_agrupados:
+                        pacotes_agrupados[package_id] = {
+                            'id': int(package_id),
+                            'peso': row['Weight'],
+                            'report': row['Report'],
+                            'localizacao': row['Location'],
+                            'itens': []
+                        }
+                    
+                    item_info = itens_do_picking.loc[row['ItemCode']]
+                    pacotes_agrupados[package_id]['itens'].append({
+                        'ItemCode': row['ItemCode'],
+                        'ItemName': item_info['ItemName'],
+                        'Quantity': row['Quantity'],
+                        'SWeight1': item_info['SWeight1']
+                    })
+                pacotes_carregados = sorted(list(pacotes_agrupados.values()), key=lambda p: p['id'])
+
+    session['pickings_in_progress'][picking_key] = {
+        'abs_entry': abs_entry,
+        'localizacao': localizacao,
+        'start_time': datetime.now().isoformat(),
+        'pacotes': pacotes_carregados
+    }
+    session.modified = True
+
+    if separacao_existente.empty:
+        nova_separacao = pd.DataFrame([{
+            'AbsEntry': abs_entry,
+            'Localizacao': localizacao,
+            'User': session['user']['email'],
+            'StartTime': session['pickings_in_progress'][picking_key]['start_time'],
+            'EndTime': None, 'DiscrepancyLog': '', 'DiscrepancyReport': ''
+        }])
+        df_separacao = pd.concat([df_separacao, nova_separacao], ignore_index=True)
+    elif is_resuming:
+        condition = (df_separacao['AbsEntry'] == abs_entry) & (df_separacao['Localizacao'] == localizacao)
+        df_separacao.loc[condition, 'User'] = session['user']['email']
+        df_separacao.loc[condition, 'StartTime'] = session['pickings_in_progress'][picking_key]['start_time']
+        df_separacao.loc[condition, 'EndTime'] = None
+        df_separacao.loc[condition, 'DiscrepancyLog'] = ''
+        df_separacao.loc[condition, 'DiscrepancyReport'] = ''
+
+    df_separacao.to_parquet(SEPARACAO_PARQUET_PATH, index=False)
     return redirect(url_for('pedidos.separar_picking', abs_entry=abs_entry, localizacao=localizacao))
 
 
@@ -343,11 +399,16 @@ def finalizar_separacao(abs_entry, localizacao):
             })
     
     if pacotes_data:
-        df_pacotes = pd.DataFrame(pacotes_data)
+        df_pacotes_novos = pd.DataFrame(pacotes_data)
         if os.path.exists(PACOTES_PARQUET_PATH):
             df_existente = pd.read_parquet(PACOTES_PARQUET_PATH)
-            df_pacotes = pd.concat([df_existente, df_pacotes])
-        df_pacotes.to_parquet(PACOTES_PARQUET_PATH, index=False)
+            # Remove pacotes antigos deste picking antes de adicionar os novos
+            df_existente = df_existente[~((df_existente['AbsEntry'] == abs_entry) & (df_existente['Localizacao'] == localizacao))]
+            df_pacotes_final = pd.concat([df_existente, df_pacotes_novos], ignore_index=True)
+        else:
+            df_pacotes_final = df_pacotes_novos
+        df_pacotes_final.to_parquet(PACOTES_PARQUET_PATH, index=False)
+
 
     # Atualizar dados da separação com logs de divergência
     df_separacao = get_separacao_data()
@@ -362,3 +423,114 @@ def finalizar_separacao(abs_entry, localizacao):
     session.modified = True
     flash('Separação finalizada e salva com sucesso!', 'success')
     return redirect(url_for('pedidos.listar_pedidos'))
+
+# --- NOVAS ROTAS ADICIONADAS ABAIXO ---
+
+@pedidos_bp.route('/picking/pacote/excluir/<int:abs_entry>/<localizacao>/<int:pacote_id>')
+@login_required
+def excluir_pacote_sessao(abs_entry, localizacao, pacote_id):
+    picking_key = f"{abs_entry}_{localizacao}"
+    if 'pickings_in_progress' in session and picking_key in session['pickings_in_progress']:
+        pacotes = session['pickings_in_progress'][picking_key]['pacotes']
+        
+        pacote_encontrado = None
+        for p in pacotes:
+            if p['id'] == pacote_id:
+                pacote_encontrado = p
+                break
+        
+        if pacote_encontrado:
+            pacotes.remove(pacote_encontrado)
+            # Re-indexar IDs dos pacotes restantes
+            for i, p in enumerate(pacotes):
+                p['id'] = i + 1
+            session.modified = True
+            flash(f'Pacote {pacote_id} excluído com sucesso.', 'success')
+        else:
+            flash(f'Pacote {pacote_id} não encontrado.', 'danger')
+    else:
+        flash('Nenhuma separação encontrada na sessão.', 'danger')
+        
+    return redirect(url_for('pedidos.separar_picking', abs_entry=abs_entry, localizacao=localizacao))
+
+@pedidos_bp.route('/picking/pacote/editar/<int:abs_entry>/<localizacao>/<int:pacote_id>', methods=['GET', 'POST'])
+@login_required
+def editar_pacote_sessao(abs_entry, localizacao, pacote_id):
+    picking_key = f"{abs_entry}_{localizacao}"
+    if 'pickings_in_progress' not in session or picking_key not in session['pickings_in_progress']:
+        flash('Nenhuma separação em andamento para este picking.', 'warning')
+        return redirect(url_for('pedidos.listar_pedidos'))
+
+    pacotes = session['pickings_in_progress'][picking_key]['pacotes']
+    pacote_para_editar = next((p for p in pacotes if p['id'] == pacote_id), None)
+
+    if not pacote_para_editar:
+        flash('Pacote não encontrado.', 'danger')
+        return redirect(url_for('pedidos.separar_picking', abs_entry=abs_entry, localizacao=localizacao))
+
+    df = get_pedidos_data()
+    itens_do_pedido = df[(df['AbsEntry'] == abs_entry) & (df['Localizacao'] == localizacao)]
+
+    if request.method == 'POST':
+        # Calcula a quantidade já separada em OUTROS pacotes
+        quantidades_outros_pacotes = {}
+        for pacote in pacotes:
+            if pacote['id'] != pacote_id:
+                for item in pacote['itens']:
+                    item_code = item['ItemCode']
+                    quantidades_outros_pacotes[item_code] = quantidades_outros_pacotes.get(item_code, 0) + item['Quantity']
+        
+        has_error = False
+        novos_itens = []
+        for item_no_pacote in pacote_para_editar['itens']:
+            item_code = item_no_pacote['ItemCode']
+            try:
+                nova_quantidade = float(request.form.get(f'quantidade_{item_code}', 0))
+
+                if nova_quantidade <= 0:
+                    continue # Item será removido
+
+                total_pedido_item = itens_do_pedido[itens_do_pedido['ItemCode'] == item_code]['RelQtty'].iloc[0]
+                separado_outros = quantidades_outros_pacotes.get(item_code, 0)
+
+                if (nova_quantidade + separado_outros) > total_pedido_item:
+                    flash(f'Erro no item {item_code}: A quantidade total separada ({nova_quantidade + separado_outros}) não pode exceder a quantidade do pedido ({total_pedido_item}).', 'danger')
+                    has_error = True
+                else:
+                    item_no_pacote['Quantity'] = nova_quantidade
+                    novos_itens.append(item_no_pacote)
+
+            except (ValueError, TypeError):
+                flash(f'Quantidade inválida para o item {item_code}. Mantendo valor original.', 'warning')
+                novos_itens.append(item_no_pacote) # Mantém o item com a quantidade antiga
+        
+        if has_error:
+            # Renderiza a página de edição novamente para mostrar o erro
+            return render_template('editar_pacote_sessao.html',
+                           pacote=pacote_para_editar,
+                           abs_entry=abs_entry,
+                           localizacao=localizacao)
+
+        pacote_para_editar['itens'] = novos_itens
+        pacote_para_editar['peso'] = request.form.get('peso_pacote')
+        pacote_para_editar['report'] = request.form.get('report')
+        pacote_para_editar['localizacao'] = request.form.get('localizacao')
+
+        if not pacote_para_editar['itens']:
+            # Se o pacote ficou vazio, remove-o da sessão
+            pacotes.remove(pacote_para_editar)
+            # Re-indexa os IDs dos pacotes restantes
+            for i, p in enumerate(pacotes):
+                p['id'] = i + 1
+            session.modified = True
+            flash(f'Pacote {pacote_id} foi removido por estar vazio.', 'success')
+        else:
+            session.modified = True
+            flash('Pacote atualizado com sucesso!', 'success')
+            
+        return redirect(url_for('pedidos.separar_picking', abs_entry=abs_entry, localizacao=localizacao))
+
+    return render_template('editar_pacote_sessao.html',
+                           pacote=pacote_para_editar,
+                           abs_entry=abs_entry,
+                           localizacao=localizacao)
