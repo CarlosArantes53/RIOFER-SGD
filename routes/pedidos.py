@@ -95,7 +95,9 @@ def listar_pedidos():
                 status = "Em separação"
                 user = separacao_info['User']
             else:
-                if (abs_entry, localizacao) in packing_finalizado_keys:
+                if separacao_info['DiscrepancyLog']:
+                    status = 'Picking Incompleto'
+                elif (abs_entry, localizacao) in packing_finalizado_keys:
                     status = 'Packing Finalizado'
                 else:
                     status = 'Aguardando Packing'

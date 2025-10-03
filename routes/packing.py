@@ -10,6 +10,7 @@ packing_bp = Blueprint('packing', __name__)
 
 PACKING_PARQUET_PATH = os.getenv('RIOFER_PACKING_SGD', 'packing.parquet')
 PACOTES_PARQUET_PATH = os.getenv('RIOFER_PACOTES_SGD', 'pacotes.parquet')
+SEPARACAO_PARQUET_PATH = os.getenv('RIOFER_SEPARACAO_SGD', 'separacao.parquet')
 
 def get_pacotes_data():
     if not os.path.exists(PACOTES_PARQUET_PATH):
@@ -21,11 +22,18 @@ def get_packing_data():
         return pd.DataFrame(columns=['AbsEntry', 'Localizacao'])
     return pd.read_parquet(PACKING_PARQUET_PATH)
 
+def get_separacao_data():
+    if not os.path.exists(SEPARACAO_PARQUET_PATH):
+        return pd.DataFrame()
+    return pd.read_parquet(SEPARACAO_PARQUET_PATH)
+
+
 @packing_bp.route('/packing')
 @login_required
 def listar_packing():
     df_pacotes = get_pacotes_data()
     df_packing_finalizado = get_packing_data()
+    df_separacao = get_separacao_data()
 
     pedidos_para_packing = pd.DataFrame()
     if not df_pacotes.empty:
@@ -36,10 +44,23 @@ def listar_packing():
     if not df_packing_finalizado.empty:
         finalizados_keys = set(zip(df_packing_finalizado['AbsEntry'], df_packing_finalizado['Localizacao']))
 
+    # Cria um conjunto de chaves para os pickings incompletos
+    incompletos_keys = set()
+    if not df_separacao.empty:
+        df_incompleto = df_separacao[df_separacao['DiscrepancyLog'].notna() & (df_separacao['DiscrepancyLog'] != '')]
+        if not df_incompleto.empty:
+            incompletos_keys = set(zip(df_incompleto['AbsEntry'], df_incompleto['Localizacao']))
+
     pedidos_com_status = []
     for _, row in pedidos_para_packing.iterrows():
+        abs_entry = row['AbsEntry']
+        localizacao = row['Localizacao']
+
+        if (abs_entry, localizacao) in incompletos_keys:
+            continue
+
         pedido_dict = row.to_dict()
-        if (row['AbsEntry'], row['Localizacao']) in finalizados_keys:
+        if (abs_entry, localizacao) in finalizados_keys:
             pedido_dict['Status'] = 'Finalizado'
         else:
             pedido_dict['Status'] = 'Aguardando Início'

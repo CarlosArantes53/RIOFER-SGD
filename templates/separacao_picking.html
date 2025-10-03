@@ -90,7 +90,8 @@
             
             <div class="box-container" style="margin-top: 2rem;">
                 <h3>Finalizar Separação</h3>
-                <form action="{{ url_for('pedidos.finalizar_separacao', abs_entry=abs_entry, localizacao=localizacao) }}" method="post">
+                <form id="finalizar-separacao-form" action="{{ url_for('pedidos.finalizar_separacao', abs_entry=abs_entry, localizacao=localizacao) }}" method="post">
+                    <input type="hidden" name="confirm_incomplete" id="confirm_incomplete" value="">
                     <div class="input-group">
                         <label for="discrepancy_report">Justificativa de Divergência (Furo de Estoque):</label>
                         <textarea id="discrepancy_report" name="discrepancy_report" rows="3" placeholder="Se houver itens faltantes ou com quantidade parcial, justifique aqui..."></textarea>
@@ -120,6 +121,38 @@
                 pesoCalculadoCell.textContent = (weight * quantity).toFixed(2);
             });
         });
+
+        const finalizarForm = document.getElementById('finalizar-separacao-form');
+        if (finalizarForm) {
+            finalizarForm.addEventListener('submit', function(event) {
+                event.preventDefault(); // Impede o envio padrão do formulário
+
+                const quantidadesSeparadas = JSON.parse('{{ quantidades_separadas|tojson|safe }}');
+                const itemsPedido = JSON.parse('{{ items|tojson|safe }}');
+                let isIncomplete = false;
+                let discrepancyMessage = 'Atenção: A separação está incompleta para os seguintes itens:\n\n';
+
+                itemsPedido.forEach(item => {
+                    const pedido = parseFloat(item.RelQtty);
+                    const separado = parseFloat(quantidadesSeparadas[item.ItemCode] || 0);
+
+                    if (separado < pedido) {
+                        isIncomplete = true;
+                        discrepancyMessage += `- ${item.ItemName} (${item.ItemCode}): Pedido: ${pedido}, Separado: ${separado}\n`;
+                    }
+                });
+
+                if (isIncomplete) {
+                    discrepancyMessage += '\nDeseja mesmo finalizar a separação com itens faltantes? O picking será marcado como "Incompleto" e não poderá seguir para o packing até ser regularizado.';
+                    if (confirm(discrepancyMessage)) {
+                        document.getElementById('confirm_incomplete').value = 'true';
+                        finalizarForm.submit();
+                    }
+                } else {
+                    finalizarForm.submit();
+                }
+            });
+        }
     });
 </script>
 {% endblock %}

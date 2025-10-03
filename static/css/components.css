@@ -371,7 +371,10 @@
     background-color: rgba(16, 185, 129, 0.2);
     color: #6ee7b7;
 }
-
+.status-tag.status-picking-incompleto {
+    background-color: rgba(170, 82, 20, 0.2);
+    color: #d6681a;
+}
 /* Ajustes nos filtros para melhor alinhamento */
 .filter-container .form-actions {
     margin-top: 0;
