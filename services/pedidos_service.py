@@ -134,7 +134,9 @@ def finalizar_processo_separacao(abs_entry, localizacao, pacotes_sessao, discrep
             pacotes_data.append({
                 'AbsEntry': abs_entry, 'Localizacao': localizacao,
                 'PackageID': pacote['id'], 'Weight': pacote['peso'],
-                'ItemCode': item['ItemCode'], 'Quantity': item['Quantity'],
+                'ItemCode': item['ItemCode'], 
+                'ItemName': item['ItemName'], # <-- LINHA ADICIONADA
+                'Quantity': item['Quantity'],
                 'Report': pacote.get('report', ''), 'Location': pacote.get('localizacao', '')
             })
     

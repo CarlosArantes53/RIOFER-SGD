@@ -27,12 +27,7 @@
             user-select: none;
             font-size: 0.9rem;
         }
-        .btn-check:checked + .btn-toggle {
-            background-color: var(--accent-color);
-            color: var(--accent-text-color);
-            border-color: var(--accent-color);
-            font-weight: bold;
-        }
+        /* A REGRA ANTIGA FOI REMOVIDA DAQUI */
         .btn-check:focus + .btn-toggle, .btn-check:hover + .btn-toggle {
             border-color: var(--accent-color);
             box-shadow: 0 0 0 2px rgba(239, 180, 16, 0.3);
@@ -52,7 +47,7 @@
                         {% for status_option in all_statuses %}
                             <input type="checkbox" class="btn-check" id="status-{{ loop.index }}" name="status" value="{{ status_option }}"
                                    {% if status_option in current_filters.status %}checked{% endif %} autocomplete="off">
-                            <label class="btn btn-toggle" for="status-{{ loop.index }}">{{ status_option }}</label>
+                            <label class="btn btn-toggle status-filter-{{ status_option|replace(' ', '-')|lower }}" for="status-{{ loop.index }}">{{ status_option }}</label>
                         {% endfor %}
                     </div>
                 </div>

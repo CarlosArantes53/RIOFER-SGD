@@ -13,13 +13,17 @@ def listar_packing():
     """
     Exibe a lista de pedidos que estão aguardando o processo de packing.
     """
-    # A rota agora apenas pede a lista pronta para o serviço
     pedidos = packing_service.get_pedidos_para_packing()
     
-    # Nota: Esta rota deveria renderizar um template específico para o packing.
-    # Usando 'pedidos.html' como no código original pode não ser o ideal.
-    # Seria bom criar um 'packing_list.html'.
-    return render_template('pedidos.html', pedidos_agrupados=pedidos)
+    # Valores padrão para as variáveis que o template 'pedidos.html' espera
+    all_statuses = ['Aguardando Início', 'Finalizado']
+    current_filters = {'cliente': '', 'status': ['Aguardando Início']}
+
+    return render_template('pedidos.html', 
+                           pedidos_agrupados=pedidos,
+                           all_statuses=all_statuses,
+                           current_filters=current_filters)
+
 
 @packing_bp.route('/packing/iniciar/<int:abs_entry>/<localizacao>', methods=['GET', 'POST'])
 @login_required

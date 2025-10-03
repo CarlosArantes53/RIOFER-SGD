@@ -7,37 +7,30 @@
     <form method="post">
         
         {% for pacote in pacotes %}
-        <div class="box-container" style="margin-bottom: 20px;">
-            <h3>Pacote {{ pacote.id }}</h3>
-            <p><strong>Peso Registrado no Picking:</strong> {{ "%.2f"|format(pacote.peso_original) }} kg</p>
-
-            <table class="table-users" style="margin-top: 1rem; margin-bottom: 1.5rem;">
-                <thead>
-                    <tr>
-                        <th>Cód. Item</th>
-                        <th>Descrição</th>
-                        <th>Quantidade</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for item in pacote.itens %}
-                    <tr>
-                        <td>{{ item.ItemCode }}</td>
-                        <td>{{ item.ItemName }}</td>
-                        <td>{{ item.Quantity }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            
-            <div class="input-group">
-                <label for="peso_pacote_{{ pacote.id }}"><strong>Peso Conferido (kg):</strong></label>
-                <input type="number" step="any" id="peso_pacote_{{ pacote.id }}" name="peso_pacote_{{ pacote.id }}" required class="input-group input">
+        <div class="pedido-card" style="margin-bottom: 20px; cursor: default;">
+            <div class="card-header" style="padding-bottom: 0.5rem; margin-bottom: 1rem;">
+                <h3 class="card-title">Pacote {{ pacote.id }}</h3>
+                <div class="card-meta">
+                   <span><strong>Peso Registrado:</strong> {{ "%.2f"|format(pacote.peso_original) }} kg</span>
+                </div>
             </div>
 
-            <div class="input-group">
-                 <input type="checkbox" id="confirm_pacote_{{ pacote.id }}" name="confirm_pacote_{{ pacote.id }}" value="1" style="margin-right: 10px;">
-                 <label for="confirm_pacote_{{ pacote.id }}">Confirmar Pacote</label>
+            <ul>
+                {% for item in pacote.itens %}
+                    <li>{{ item.ItemName }} ({{ item.ItemCode }}) - Qtd: {{ item.Quantity }}</li>
+                {% endfor %}
+            </ul>
+            
+            <div class="form-grid" style="margin-top: 1.5rem; align-items: center;">
+                <div class="input-group">
+                    <label for="peso_pacote_{{ pacote.id }}"><strong>Peso Conferido (kg):</strong></label>
+                    <input type="number" step="any" id="peso_pacote_{{ pacote.id }}" name="peso_pacote_{{ pacote.id }}" required>
+                </div>
+
+                <div class="input-group" style="padding-top: 1.5rem; display: flex; align-items: center; gap: 10px;">
+                     <input type="checkbox" id="confirm_pacote_{{ pacote.id }}" name="confirm_pacote_{{ pacote.id }}" value="1" style="width: auto; transform: scale(1.5);">
+                     <label for="confirm_pacote_{{ pacote.id }}" style="margin-bottom: 0;">Confirmar Pacote</label>
+                </div>
             </div>
         </div>
         {% endfor %}

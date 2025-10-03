@@ -22,15 +22,25 @@ def listar_pedidos():
     """
     Rota para listar os pedidos. A lógica de negócio foi movida para o serviço.
     """
-    pedidos_finais, all_statuses = pedidos_service.get_pedidos_para_listar()
+    pedidos_finais, _ = pedidos_service.get_pedidos_para_listar()
 
-    # A lógica de filtro, por ser ligada à requisição, permanece na rota.
+    # Define uma lista fixa de todos os status possíveis na ordem desejada
+    ALL_POSSIBLE_STATUSES = [
+        'Pendente',
+        'Em separação',
+        'Picking Incompleto',
+        'Aguardando Packing',
+        'Packing Finalizado'
+    ]
+
+    # Lógica de filtro, por ser ligada à requisição, permanece na rota.
     filter_cliente = request.args.get('cliente', '').strip()
+    
     if 'status' in request.args:
         filter_status = request.args.getlist('status')
     else:
         # Filtro padrão para não exibir pedidos já concluídos
-        filter_status = [s for s in all_statuses if s != 'Packing Finalizado']
+        filter_status = [s for s in ALL_POSSIBLE_STATUSES if s != 'Packing Finalizado']
 
     if filter_cliente:
         normalized_filter = strip_accents(filter_cliente.lower())
@@ -44,10 +54,12 @@ def listar_pedidos():
 
     return render_template('pedidos.html',
                            pedidos_agrupados=pedidos_finais,
-                           all_statuses=sorted(list(all_statuses)),
+                           all_statuses=ALL_POSSIBLE_STATUSES, # Passa a lista fixa para o template
                            current_filters={'cliente': filter_cliente, 'status': filter_status})
 
-# --- ROTA CORRIGIDA (ADICIONADA DE VOLTA) ---
+
+# --- O restante do arquivo continua o mesmo ---
+
 @pedidos_bp.route('/picking/<int:abs_entry>')
 @login_required
 def visualizar_picking(abs_entry):
@@ -119,9 +131,53 @@ def separar_picking(abs_entry, localizacao):
             quantidades_separadas[item_code] = quantidades_separadas.get(item_code, 0) + item['Quantity']
 
     if request.method == 'POST':
-        # Lógica de criação de pacote na sessão (código original mantido)
-        # ...
-        flash('Pacote criado com sucesso!', 'success')
+        itens_pacote = []
+        has_error = False
+        for _, item_pedido in picking_items_df.iterrows():
+            item_code = item_pedido['ItemCode']
+            try:
+                quantidade_str = request.form.get(f'quantidade_{item_code}', '0').replace(',', '.')
+                quantidade = float(quantidade_str) if quantidade_str else 0
+                
+                if quantidade > 0:
+                    # Validação da quantidade
+                    total_pedido = item_pedido['RelQtty']
+                    ja_separado = quantidades_separadas.get(item_code, 0)
+                    if (ja_separado + quantidade) > total_pedido:
+                        flash(f"Quantidade para o item {item_code} excede o solicitado no pedido.", 'danger')
+                        has_error = True
+                        break 
+                    
+                    itens_pacote.append({
+                        "ItemCode": item_code,
+                        "ItemName": item_pedido['ItemName'],
+                        "Quantity": quantidade
+                    })
+            except (ValueError, TypeError):
+                flash(f"Valor inválido para a quantidade do item {item_code}.", 'danger')
+                has_error = True
+                break
+
+        if has_error:
+            return redirect(url_for('pedidos.separar_picking', abs_entry=abs_entry, localizacao=localizacao))
+
+        if not itens_pacote:
+            flash("Nenhum item foi adicionado ao pacote. Preencha as quantidades.", 'warning')
+        else:
+            try:
+                novo_pacote = {
+                    "id": len(session['pickings_in_progress'][picking_key]['pacotes']) + 1,
+                    "peso": float(request.form.get('peso_pacote')),
+                    "localizacao": request.form.get('localizacao'),
+                    "report": request.form.get('report', ''),
+                    "itens": itens_pacote
+                }
+                session['pickings_in_progress'][picking_key]['pacotes'].append(novo_pacote)
+                session.modified = True
+                flash('Pacote criado com sucesso!', 'success')
+            except (ValueError, TypeError):
+                flash('O peso do pacote deve ser um número válido.', 'danger')
+
         return redirect(url_for('pedidos.separar_picking', abs_entry=abs_entry, localizacao=localizacao))
         
     return render_template('separacao_picking.html',

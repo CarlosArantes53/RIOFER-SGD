@@ -375,6 +375,27 @@
     color: #d6681a;
 }
 
+/* --- INÍCIO DAS MUDANÇAS --- */
+
+/* Estilos para os botões de filtro de status */
+.status-filter-pendente { border-color: #ff1b1b; color: #ff1b1b !important; }
+.status-filter-em-separação { border-color: #fdc81c; color: #fdc81c !important; }
+.status-filter-picking-incompleto { border-color: #d6681a; color: #d6681a !important; }
+.status-filter-aguardando-packing { border-color: #4099ff; color: #4099ff !important; }
+.status-filter-packing-finalizado { border-color: #6ee7b7; color: #6ee7b7 !important; }
+
+.btn-check:checked + .btn-toggle { font-weight: bold; }
+
+/* Cores de fundo para botões de filtro selecionados */
+.btn-check:checked + .status-filter-pendente { background-color: #ff1b1b; border-color: #ff1b1b; color: var(--primary-bg) !important; }
+.btn-check:checked + .status-filter-em-separação { background-color: #fdc81c; border-color: #fdc81c; color: var(--primary-bg) !important; }
+.btn-check:checked + .status-filter-picking-incompleto { background-color: #d6681a; border-color: #d6681a; color: var(--text-primary) !important; }
+.btn-check:checked + .status-filter-aguardando-packing { background-color: #4099ff; border-color: #4099ff; color: var(--text-primary) !important; }
+.btn-check:checked + .status-filter-packing-finalizado { background-color: #6ee7b7; border-color: #6ee7b7; color: var(--primary-bg) !important; }
+
+/* --- FIM DAS MUDANÇAS --- */
+
+
 .filter-container .form-actions {
     margin-top: 0;
 }
