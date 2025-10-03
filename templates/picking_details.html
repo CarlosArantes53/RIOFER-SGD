@@ -1,31 +1,37 @@
 {% extends "layout.html" %}
 
-{% block title %}Detalhes do Picking {{ abs_entry }} - {{ localizacao }}{% endblock %}
+{% block title %}Detalhes do Picking {{ abs_entry }}{% endblock %}
 
 {% block content %}
-    <h1>Itens do Picking - Pedido {{ abs_entry }} - Localização {{ localizacao }}</h1>
-    <a href="{{ url_for('pedidos.listar_pedidos') }}" class="btn btn-secondary">Voltar para a Lista de Pedidos</a>
+    <h1>Itens do Picking - Pedido {{ abs_entry }}</h1>
+    <h2>Cliente: {{ card_name }}</h2>
+    <a href="{{ url_for('pedidos.listar_pedidos') }}" class="btn btn-secondary" style="margin-bottom: 2rem;">Voltar para a Lista de Pedidos</a>
     
-    <table class="table-users">
-        <thead>
-            <tr>
-                <th>Código do Item</th>
-                <th>Descrição</th>
-                <th>Peso Unitário</th>
-                <th>Quantidade Picking</th>
-                <th>Unidade de Medida</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for item in items %}
-            <tr>
-                <td>{{ item.ItemCode }}</td>
-                <td>{{ item.ItemName }}</td>
-                <td>{{ item.SWeight1 }}</td>
-                <td>{{ item.RelQtty }}</td>
-                <td>{{ item.UomCode }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    {% for localizacao, items in items_por_localizacao.items() %}
+        <div class="box-container" style="margin-bottom: 2rem;">
+            <h3>Localização: {{ localizacao }}</h3>
+            <table class="table-users">
+                <thead>
+                    <tr>
+                        <th>Código do Item</th>
+                        <th>Descrição</th>
+                        <th>Peso Unitário</th>
+                        <th>Quantidade Picking</th>
+                        <th>Unidade de Medida</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr>
+                        <td>{{ item.ItemCode }}</td>
+                        <td>{{ item.ItemName }}</td>
+                        <td>{{ item.SWeight1 }}</td>
+                        <td>{{ item.RelQtty }}</td>
+                        <td>{{ item.UomCode }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endfor %}
 {% endblock %}

@@ -4,71 +4,110 @@
 
 {% block content %}
     
-    <table class="table-users">
-        <thead>
-            <tr>
-                <th>N° Picking</th>
-                <th>Localização</th>
-                <th>Cliente</th>
-                <th>Tipo de Entrega</th>
-                <th>Cidade</th>
-                <th>Status</th>
-                <th>Ações</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for grupo in pedidos_agrupados %}
-                {% set outer_loop = loop %}
-                {% set bar_colors = ['#EFB410', '#4a5568'] %} {# gold and gray #}
-                {% set row_colors = ['var(--primary-bg)', 'var(--secondary-bg)'] %}
-                {% for local in grupo.locations %}
-                    <tr style="background-color: {{ loop.cycle(row_colors[0], row_colors[1]) if grupo.locations|length > 1 else 0 }};">
-                        {% if loop.first %}
-                            <td rowspan="{{ grupo.locations|length }}" class="abs-entry-cell">
-                                <div class="vertical-bar" style="background-color: {{ bar_colors[outer_loop.index0 % 2] }};"></div>
-                                {{ grupo.AbsEntry }}
-                            </td>
-                        {% endif %}
-                        
-                        <td>{{ local.Localizacao }}</td>
-                        <td>{{ grupo.CardName }}</td>
-                        <td>
+    <div class="filter-container" style="margin-bottom: 2rem;">
+        <form method="get" action="{{ url_for('pedidos.listar_pedidos') }}">
+            <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-end;">
+                <div class="input-group" style="flex: 1 1 200px;">
+                    <label for="cliente">Filtrar por Cliente:</label>
+                    <input type="text" id="cliente" name="cliente" value="{{ current_filters.cliente or '' }}" placeholder="Digite o nome do cliente">
+                </div>
+                <div class="input-group" style="flex: 1 1 200px;">
+                    <label for="status">Filtrar por Status:</label>
+                    <select id="status" name="status" multiple>
+                        {% for status_option in all_statuses %}
+                            <option value="{{ status_option }}" {% if status_option in current_filters.status %}selected{% endif %}>
+                                {{ status_option }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn">Filtrar</button>
+                    <a href="{{ url_for('pedidos.listar_pedidos') }}" class="btn btn-secondary">Limpar</a>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="pedidos-list-container">
+        {% for grupo in pedidos_agrupados %}
+            {% set outer_loop = loop %}
+            {% set bar_colors = ['#EFB410', '#4a5568'] %}
+            <div class="pedido-card" data-href="{{ url_for('pedidos.visualizar_picking', abs_entry=grupo.AbsEntry) }}" style="border-left-color: {{ bar_colors[outer_loop.index0 % 2] }};">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <span class="pedido-abs-entry">#{{ grupo.AbsEntry }}</span> - {{ grupo.CardName }}
+                    </h2>
+                    <div class="card-meta">
+                        <span>
                             {% if grupo['U_TU_QuemEntrega'] == '01' %}
                                 🚚 Entrega
                             {% elif grupo['U_TU_QuemEntrega'] == '02' %}
                                 📦 Retirada
                             {% else %}
-                                {{ grupo['U_TU_QuemEntrega'] }}
+                                ❌ Indefinido
                             {% endif %}
-                        </td>
-                        <td>{{ grupo.U_GI_Cidade }}</td>
-                        <td>{{ local.Status }}</td>
-                        <td>
-                            <div class="action-buttons">
-                                <a href="{{ url_for('pedidos.visualizar_picking', abs_entry=grupo.AbsEntry, localizacao=local.Localizacao) }}" class="btn">Visualizar</a>
-                                
-                                {% set status = local.Status %}
-                                {% set user_in_separation = local.UserInSeparation %}
-                                
-                                {% if 'Em separação' in status and user_in_separation == session.user['email'] %}
-                                    <a href="{{ url_for('pedidos.separar_picking', abs_entry=grupo.AbsEntry, localizacao=local.Localizacao) }}" class="btn">Continuar Separação</a>
-                                {% elif 'Em separação' in status %}
-                                    <button class="btn" disabled>Em separação</button>
+                        </span>
+                        <span>
+                            {% if grupo['U_TU_QuemEntrega'] == '01' %}
+                            📍 {{ grupo.U_GI_Cidade }}
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
 
-                                {% elif status == 'Aguardando Packing' %}
-                                    <a href="{{ url_for('packing.iniciar_packing', abs_entry=grupo.AbsEntry, localizacao=local.Localizacao) }}" class="btn">Iniciar Packing</a>
-                                
-                                {% elif status == 'Packing Finalizado' %}
-                                    <button class="btn" disabled>Concluído</button>
-                                
-                                {% else %} {# Caso padrão para Status == 'Pendente' #}
-                                    <a href="{{ url_for('pedidos.iniciar_separacao', abs_entry=grupo.AbsEntry, localizacao=local.Localizacao) }}" class="btn">Iniciar Separação</a>
-                                {% endif %}
-                            </div>
-                        </td>
-                    </tr>
-                {% endfor %}
-            {% endfor %}
-        </tbody>
-    </table>
+                <div class="card-body">
+                    {% for local in grupo.locations %}
+                    <div class="location-section">
+                        <div class="location-info">
+                            <span class="location-name">{{ local.Localizacao }}</span>
+                            <span class="status-tag status-{{ local.Status|replace(' ', '-')|lower }}">
+                                {{ local.StatusCompleto }}
+                            </span>
+                        </div>
+                        <div class="action-buttons">
+                            {% set status = local.Status %}
+                            {% set user_in_separation = local.UserInSeparation %}
+                            
+                            {% if 'Em separação' in status and user_in_separation == session.user['email'] %}
+                                <a href="{{ url_for('pedidos.separar_picking', abs_entry=grupo.AbsEntry, localizacao=local.Localizacao) }}" class="btn">Continuar Separação</a>
+                            {% elif 'Em separação' in status %}
+                                <button class="btn" disabled>Em separação</button>
+                            {% elif status == 'Aguardando Packing' %}
+                                <a href="{{ url_for('packing.iniciar_packing', abs_entry=grupo.AbsEntry, localizacao=local.Localizacao) }}" class="btn">Iniciar Packing</a>
+                            {% elif status == 'Packing Finalizado' %}
+                                <button class="btn" disabled>Concluído</button>
+                            {% else %}
+                                <a href="{{ url_for('pedidos.iniciar_separacao', abs_entry=grupo.AbsEntry, localizacao=local.Localizacao) }}" class="btn">Iniciar Separação</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% else %}
+            <div class="box-container" style="text-align: center;">
+                <p>Nenhum pedido encontrado com os filtros aplicados.</p>
+            </div>
+        {% endfor %}
+    </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const cards = document.querySelectorAll('.pedido-card');
+        cards.forEach(card => {
+            card.addEventListener('click', function(event) {
+                if (event.target.closest('a, button, select, input')) {
+                    return;
+                }
+                const href = this.dataset.href;
+                if (href) {
+                    window.location.href = href;
+                }
+            });
+        });
+    });
+</script>
 {% endblock %}

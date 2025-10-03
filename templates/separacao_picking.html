@@ -3,66 +3,76 @@
 {% block title %}Separação do Picking {{ abs_entry }} - {{ localizacao }}{% endblock %}
 
 {% block content %}
-    <h1>Separação do Pedido {{ abs_entry }} - Localização {{ localizacao }}</h1>
-    
-    <div class="user-form">
-        <form method="post">
-            <table class="table-users">
-                <thead>
-                    <tr>
-                        <th>Cód. Item</th>
-                        <th>Descrição</th>
-                        <th>Qtd. Pedido</th>
-                        <th>Qtd. Separada</th>
-                        <th>Qtd. Pendente</th>
-                        <th>Qtd. para o Pacote</th>
-                        <th>Peso (kg)</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for item in items %}
-                    <tr>
-                        <td>{{ item.ItemCode }}</td>
-                        <td>{{ item.ItemName }}</td>
-                        <td>{{ item.RelQtty }}</td>
-                        <td>{{ quantidades_separadas.get(item.ItemCode, 0) }}</td>
-                        <td>{{ item.RelQtty - quantidades_separadas.get(item.ItemCode, 0) }}</td>
-                        <td><input type="number" step="any" name="quantidade_{{ item.ItemCode }}" placeholder="0" class="quantidade-input" data-weight="{{ item.SWeight1 }}"></td>
-                        <td class="peso-calculado">0.00</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            
-            <div class="input-group" style="margin-top: 20px;">
-                <label for="peso_pacote">Peso do Pacote (kg):</label>
-                <input type="number" step="any" id="peso_pacote" name="peso_pacote" required>
-            </div>
+    <div class="box-container">
+        <h1>Separação do Pedido {{ abs_entry }} - Localização {{ localizacao }}</h1>
+        
+        <div class="user-form">
+            <form method="post">
+                <table class="table-users">
+                    <thead>
+                        <tr>
+                            <th>Cód. Item</th>
+                            <th>Descrição</th>
+                            <th>Qtd. Pedido</th>
+                            <th>Qtd. Separada</th>
+                            <th>Qtd. Pendente</th>
+                            <th>Qtd. para o Pacote</th>
+                            <th>Peso (kg)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items %}
+                        <tr>
+                            <td>{{ item.ItemCode }}</td>
+                            <td>{{ item.ItemName }}</td>
+                            <td>{{ "%.2f"|format(item.RelQtty|float) }}</td>
+                            <td>{{ "%.2f"|format(quantidades_separadas.get(item.ItemCode, 0)|float) }}</td>
+                            <td>{{ "%.2f"|format(item.RelQtty - quantidades_separadas.get(item.ItemCode, 0)) }}</td>
+                            <td><input type="number" step="any" name="quantidade_{{ item.ItemCode }}" placeholder="0" class="quantidade-input" data-weight="{{ item.SWeight1 }}"></td>
+                            <td class="peso-calculado">0.00</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                
+                <div class="form-grid" style="margin-top: 20px;">
+                    <div class="input-group">
+                        <label for="peso_pacote">Peso do Pacote (kg):</label>
+                        <input type="number" step="any" id="peso_pacote" name="peso_pacote" required>
+                    </div>
 
-            <div class="input-group">
-                <label for="report">Observação:</label>
-                <textarea id="report" name="report" rows="3"></textarea>
-            </div>
+                    <div class="input-group">
+                        <label for="localizacao">Localização:</label>
+                        <select id="localizacao" name="localizacao">
+                            <option value="Doca 1">Doca 1</option>
+                            <option value="Doca 2">Doca 2</option>
+                            <option value="Doca 3">Doca 3</option>
+                        </select>
+                    </div>
 
-            <div class="input-group">
-                <label for="localizacao">Localização:</label>
-                <select id="localizacao" name="localizacao">
-                    <option value="Doca 1">Doca 1</option>
-                    <option value="Doca 2">Doca 2</option>
-                    <option value="Doca 3">Doca 3</option>
-                </select>
-            </div>
+                    <div class="input-group full-width">
+                        <label for="report">Observação:</label>
+                        <textarea id="report" name="report" rows="3"></textarea>
+                    </div>
+                </div>
 
-            <button type="submit" class="btn">Criar Pacote</button>
-        </form>
+                <button type="submit" class="btn" style="margin-top: 1rem;">Criar Pacote</button>
+            </form>
+        </div>
     </div>
 
     <div style="margin-top: 40px;">
         <h2>Pacotes Criados</h2>
         {% if pacotes %}
             {% for pacote in pacotes %}
-                <div class="box-container" style="margin-bottom: 20px;">
-                    <h3>Pacote {{ pacote.id }} - Peso: {{ pacote.peso }} kg - Local: {{ pacote.localizacao }}</h3>
+                <div class="pedido-card" style="margin-bottom: 20px; cursor: default;">
+                    <div class="card-header" style="padding-bottom: 0.5rem; margin-bottom: 1rem;">
+                        <h3 class="card-title">Pacote {{ pacote.id }}</h3>
+                        <div class="card-meta">
+                           <span><strong>Peso:</strong> {{ pacote.peso }} kg</span>
+                           <span><strong>Local:</strong> {{ pacote.localizacao }}</span>
+                        </div>
+                    </div>
                     {% if pacote.report %}
                         <p><strong>Observação:</strong> {{ pacote.report }}</p>
                     {% endif %}
@@ -71,15 +81,28 @@
                             <li>{{ item.ItemName }} ({{ item.ItemCode }}) - Qtd: {{ item.Quantity }}</li>
                         {% endfor %}
                     </ul>
-                    <div class="action-buttons">
+                    <div class="action-buttons" style="margin-top: 1rem;">
                         <a href="#" class="btn btn-secondary">Editar</a>
                         <a href="#" class="btn btn-danger" onclick="return confirm('Tem certeza que deseja excluir este pacote?');">Excluir</a>
                     </div>
                 </div>
             {% endfor %}
-            <a href="{{ url_for('pedidos.finalizar_separacao', abs_entry=abs_entry, localizacao=localizacao) }}" class="btn">Finalizar Separação</a>
+            
+            <div class="box-container" style="margin-top: 2rem;">
+                <h3>Finalizar Separação</h3>
+                <form action="{{ url_for('pedidos.finalizar_separacao', abs_entry=abs_entry, localizacao=localizacao) }}" method="post">
+                    <div class="input-group">
+                        <label for="discrepancy_report">Justificativa de Divergência (Furo de Estoque):</label>
+                        <textarea id="discrepancy_report" name="discrepancy_report" rows="3" placeholder="Se houver itens faltantes ou com quantidade parcial, justifique aqui..."></textarea>
+                    </div>
+                    <button type="submit" class="btn">Finalizar Separação</button>
+                </form>
+            </div>
+
         {% else %}
-            <p>Nenhum pacote criado ainda.</p>
+            <div class="box-container" style="text-align: center;">
+                <p>Nenhum pacote criado ainda. Crie ao menos um pacote para poder finalizar a separação.</p>
+            </div>
         {% endif %}
     </div>
 
