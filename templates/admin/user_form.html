@@ -27,10 +27,10 @@
         <label for="roles">Setores:</label>
         <select id="roles" name="roles" multiple required>
             <option value="admin" {% if 'admin' in user.roles %}selected{% endif %}>Admin</option>
-            <option value="diretoria" {% if 'expedicao' in user.roles %}selected{% endif %}>Expedição</option>
-            <option value="comercial" {% if 'separador' in user.roles %}selected{% endif %}>Separador</option>
-            <option value="financeiro" {% if 'conferente' in user.roles %}selected{% endif %}>Conferente</option>
-            <option value="financeiro" {% if 'motorista' in user.roles %}selected{% endif %}>Motorista</option>
+            <option value="expedicao" {% if 'expedicao' in user.roles %}selected{% endif %}>Expedição</option>
+            <option value="separador" {% if 'separador' in user.roles %}selected{% endif %}>Separador</option>
+            <option value="conferente" {% if 'conferente' in user.roles %}selected{% endif %}>Conferente</option>
+            <option value="motorista" {% if 'motorista' in user.roles %}selected{% endif %}>Motorista</option>
             <option value="default" {% if 'default' in user.roles %}selected{% endif %}>Padrão (sem acesso)</option>
         </select>
     </div>

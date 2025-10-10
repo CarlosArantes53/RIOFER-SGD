@@ -8,14 +8,16 @@ def get_pedidos_para_listar():
     """
     Busca todos os dados necessários e aplica a lógica de negócio para determinar
     o status de cada localização de cada pedido.
-    Retorna uma lista de pedidos agrupados e a lista de todos os status possíveis.
+    Retorna uma lista de pedidos agrupados, a lista de todos os status possíveis e 
+    o horário da última sincronização.
     """
     df_picking = pedidos_repository.get_picking_data()
     df_separacao = separacao_repository.get_separacao_data()
     df_packing = packing_repository.get_packing_data()
+    sync_time = pedidos_repository.get_picking_file_mtime()
 
     if df_picking.empty:
-        return [], set()
+        return [], set(), sync_time
 
     # Otimização: remove linhas onde a localização é nula ou vazia
     df_picking.dropna(subset=['Localizacao'], inplace=True)
@@ -71,7 +73,7 @@ def get_pedidos_para_listar():
         
         pedidos_agrupados[abs_entry]['locations'].append(location_info)
 
-    return list(pedidos_agrupados.values()), sorted(list(all_statuses))
+    return list(pedidos_agrupados.values()), sorted(list(all_statuses)), sync_time
 
 
 def iniciar_nova_separacao(abs_entry, localizacao, user_email):

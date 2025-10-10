@@ -5,32 +5,25 @@
 {% block content %}
     
     <style>
-        .btn-group-toggle {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-top: 0.5rem;
-        }
-        .btn-check {
-            position: absolute;
-            clip: rect(0,0,0,0);
-            pointer-events: none;
-        }
-        .btn-toggle {
-            padding: 0.5rem 1rem;
-            border-radius: var(--border-radius);
-            background-color: var(--secondary-bg);
-            border: 1px solid var(--border-color);
+        .btn-group-toggle { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 0.5rem; }
+        .btn-check { position: absolute; clip: rect(0,0,0,0); pointer-events: none; }
+        .btn-toggle { padding: 0.5rem 1rem; border-radius: var(--border-radius); background-color: var(--secondary-bg); border: 1px solid var(--border-color); color: var(--text-secondary); cursor: pointer; transition: all 0.2s ease-in-out; user-select: none; font-size: 0.9rem; }
+        .btn-check:focus + .btn-toggle, .btn-check:hover + .btn-toggle { border-color: var(--accent-color); box-shadow: 0 0 0 2px rgba(239, 180, 16, 0.3); }
+
+        /* Estilos das Abas */
+        .tabs { display: flex; border-bottom: 2px solid var(--border-color); margin-bottom: 2rem; }
+        .tab-link { padding: 1rem 1.5rem; cursor: pointer; background: none; border: none; color: var(--text-secondary); font-size: 1.1rem; font-weight: 500; }
+        .tab-link.active { color: var(--accent-color); border-bottom: 2px solid var(--accent-color); font-weight: bold; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        
+        .sync-time-footer {
+            text-align: center;
+            margin-top: 3rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border-color);
             color: var(--text-secondary);
-            cursor: pointer;
-            transition: all 0.2s ease-in-out;
-            user-select: none;
             font-size: 0.9rem;
-        }
-        /* A REGRA ANTIGA FOI REMOVIDA DAQUI */
-        .btn-check:focus + .btn-toggle, .btn-check:hover + .btn-toggle {
-            border-color: var(--accent-color);
-            box-shadow: 0 0 0 2px rgba(239, 180, 16, 0.3);
         }
     </style>
 
@@ -59,75 +52,114 @@
         </form>
     </div>
 
-    <div class="pedidos-list-container">
-        {% for grupo in pedidos_agrupados %}
-            {% set outer_loop = loop %}
-            {% set bar_colors = ['#EFB410', '#4a5568'] %}
-            <div class="pedido-card" data-href="{{ url_for('pedidos.visualizar_picking', abs_entry=grupo.AbsEntry) }}" style="border-left-color: {{ bar_colors[outer_loop.index0 % 2] }};">
-                <div class="card-header">
-                    <h2 class="card-title">
-                        <span class="pedido-abs-entry">#{{ grupo.AbsEntry }}</span> - {{ grupo.CardName }}
-                    </h2>
-                    <div class="card-meta">
-                        <span>
-                            {% if grupo['U_TU_QuemEntrega'] == '01' %}
-                                🚚 Entrega
-                            {% elif grupo['U_TU_QuemEntrega'] == '02' %}
-                                📦 Retirada
-                            {% else %}
-                                ❌ Indefinido
-                            {% endif %}
-                        </span>
-                        <span>
-                            {% if grupo['U_TU_QuemEntrega'] == '01' %}
-                            📍 {{ grupo.U_GI_Cidade }}
-                            {% endif %}
-                        </span>
-                    </div>
-                </div>
-
-                <div class="card-body">
-                    {% for local in grupo.locations %}
-                    <div class="location-section">
-                        <div class="location-info">
-                            <span class="location-name">{{ local.Localizacao }}</span>
-                            <span class="status-tag status-{{ local.Status|replace(' ', '-')|lower }}">
-                                {{ local.StatusCompleto }}
-                            </span>
-                        </div>
-                        <div class="action-buttons">
-                            {% set status = local.Status %}
-                            {% set user_in_separation = local.UserInSeparation %}
-                            
-                            {% if 'Em separação' in status and user_in_separation == session.user['email'] %}
-                                <a href="{{ url_for('pedidos.separar_picking', abs_entry=grupo.AbsEntry, localizacao=local.Localizacao) }}" class="btn">Continuar Separação</a>
-                            {% elif 'Em separação' in status %}
-                                <button class="btn" disabled>Em separação</button>
-                            {% elif status == 'Picking Incompleto' %}
-                                <a href="{{ url_for('pedidos.iniciar_separacao', abs_entry=grupo.AbsEntry, localizacao=local.Localizacao) }}" class="btn">Retomar Picking</a>
-                            {% elif status == 'Aguardando Packing' %}
-                                <a href="{{ url_for('packing.iniciar_packing', abs_entry=grupo.AbsEntry, localizacao=local.Localizacao) }}" class="btn">Iniciar Packing</a>
-                            {% elif status == 'Packing Finalizado' %}
-                                <button class="btn" disabled>Concluído</button>
-                            {% else %}
-                                <a href="{{ url_for('pedidos.iniciar_separacao', abs_entry=grupo.AbsEntry, localizacao=local.Localizacao) }}" class="btn">Iniciar Separação</a>
-                            {% endif %}
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
-        {% else %}
-            <div class="box-container" style="text-align: center;">
-                <p>Nenhum pedido encontrado com os filtros aplicados.</p>
-            </div>
-        {% endfor %}
+    <div class="tabs">
+        <button class="tab-link active" onclick="openTab(event, 'entregas')">🚚 Entregas ({{ pedidos_entrega|length }})</button>
+        <button class="tab-link" onclick="openTab(event, 'retira')">📦 Cliente Retira ({{ pedidos_retira|length }})</button>
     </div>
+
+    <div id="entregas" class="tab-content active">
+        <div class="pedidos-list-container">
+            {% for grupo in pedidos_entrega %}
+                {% set outer_loop = loop %}
+                {% set bar_colors = ['#EFB410', '#4a5568'] %}
+                <div class="pedido-card" data-href="{{ url_for('pedidos.visualizar_picking', abs_entry=grupo.AbsEntry) }}" style="border-left-color: {{ bar_colors[outer_loop.index0 % 2] }};">
+                    <div class="card-header">
+                        <h2 class="card-title"><span class="pedido-abs-entry">#{{ grupo.AbsEntry }}</span> - {{ grupo.CardName }}</h2>
+                        <div class="card-meta">
+                            <span>🚚 Entrega</span>
+                            <span>📍 {{ grupo.U_GI_Cidade }}</span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        {% for local in grupo.locations %}
+                        <div class="location-section">
+                            <div class="location-info">
+                                <span class="location-name">{{ local.Localizacao }}</span>
+                                <span class="status-tag status-{{ local.Status|replace(' ', '-')|lower }}">{{ local.StatusCompleto }}</span>
+                            </div>
+                            <div class="action-buttons">
+                                {% set status = local.Status %}
+                                {% set user_in_separation = local.UserInSeparation %}
+                                {% if 'Em separação' in status and user_in_separation == session.user['email'] %}
+                                    <a href="{{ url_for('pedidos.separar_picking', abs_entry=grupo.AbsEntry, localizacao=local.Localizacao) }}" class="btn">Continuar Separação</a>
+                                {% elif 'Em separação' in status %}
+                                    <button class="btn" disabled>Em separação</button>
+                                {% elif status == 'Picking Incompleto' %}
+                                    <a href="{{ url_for('pedidos.iniciar_separacao', abs_entry=grupo.AbsEntry, localizacao=local.Localizacao) }}" class="btn">Retomar Picking</a>
+                                {% elif status == 'Aguardando Packing' %}
+                                    <a href="{{ url_for('packing.iniciar_packing', abs_entry=grupo.AbsEntry, localizacao=local.Localizacao) }}" class="btn">Iniciar Packing</a>
+                                {% elif status == 'Packing Finalizado' %}
+                                    <button class="btn" disabled>Concluído</button>
+                                {% else %}
+                                    <a href="{{ url_for('pedidos.iniciar_separacao', abs_entry=grupo.AbsEntry, localizacao=local.Localizacao) }}" class="btn">Iniciar Separação</a>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% else %}
+                <div class="box-container" style="text-align: center;"><p>Nenhum pedido de entrega encontrado com os filtros aplicados.</p></div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div id="retira" class="tab-content">
+        <div class="pedidos-list-container">
+            {% for grupo in pedidos_retira %}
+                 {% set outer_loop = loop %}
+                {% set bar_colors = ['#EFB410', '#4a5568'] %}
+                <div class="pedido-card" data-href="{{ url_for('pedidos.visualizar_picking', abs_entry=grupo.AbsEntry) }}" style="border-left-color: {{ bar_colors[outer_loop.index0 % 2] }};">
+                    <div class="card-header">
+                        <h2 class="card-title"><span class="pedido-abs-entry">#{{ grupo.AbsEntry }}</span> - {{ grupo.CardName }}</h2>
+                        <div class="card-meta">
+                            <span>📦 Retirada</span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        {% for local in grupo.locations %}
+                        <div class="location-section">
+                            <div class="location-info">
+                                <span class="location-name">{{ local.Localizacao }}</span>
+                                <span class="status-tag status-{{ local.Status|replace(' ', '-')|lower }}">{{ local.StatusCompleto }}</span>
+                            </div>
+                            <div class="action-buttons">
+                                {% set status = local.Status %}
+                                {% set user_in_separation = local.UserInSeparation %}
+                                {% if 'Em separação' in status and user_in_separation == session.user['email'] %}
+                                    <a href="{{ url_for('pedidos.separar_picking', abs_entry=grupo.AbsEntry, localizacao=local.Localizacao) }}" class="btn">Continuar Separação</a>
+                                {% elif 'Em separação' in status %}
+                                    <button class="btn" disabled>Em separação</button>
+                                {% elif status == 'Picking Incompleto' %}
+                                    <a href="{{ url_for('pedidos.iniciar_separacao', abs_entry=grupo.AbsEntry, localizacao=local.Localizacao) }}" class="btn">Retomar Picking</a>
+                                {% elif status == 'Aguardando Packing' %}
+                                    <a href="{{ url_for('packing.iniciar_packing', abs_entry=grupo.AbsEntry, localizacao=local.Localizacao) }}" class="btn">Iniciar Packing</a>
+                                {% elif status == 'Packing Finalizado' %}
+                                    <button class="btn" disabled>Concluído</button>
+                                {% else %}
+                                    <a href="{{ url_for('pedidos.iniciar_separacao', abs_entry=grupo.AbsEntry, localizacao=local.Localizacao) }}" class="btn">Iniciar Separação</a>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% else %}
+                <div class="box-container" style="text-align: center;"><p>Nenhum pedido de retirada encontrado com os filtros aplicados.</p></div>
+            {% endfor %}
+        </div>
+    </div>
+    
+    <footer class="sync-time-footer">
+        Horário de sincronização da base de dados: <strong>{{ sync_time }}</strong>
+    </footer>
+
 {% endblock %}
 
 {% block scripts %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Lógica para tornar os cards clicáveis
         const cards = document.querySelectorAll('.pedido-card');
         cards.forEach(card => {
             card.addEventListener('click', function(event) {
@@ -140,6 +172,42 @@
                 }
             });
         });
+
+        // Lógica para manter a aba ativa após o reload (usando localStorage)
+        const activeTab = localStorage.getItem('activeOrderTab');
+        if (activeTab) {
+            document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+            document.querySelectorAll('.tab-link').forEach(tl => tl.classList.remove('active'));
+            document.getElementById(activeTab).classList.add('active');
+            document.querySelector(`.tab-link[onclick*="'${activeTab}'"]`).classList.add('active');
+        }
+    });
+
+    function openTab(evt, tabName) {
+        // Ocultar todos os conteúdos de aba
+        const tabcontent = document.getElementsByClassName("tab-content");
+        for (let i = 0; i < tabcontent.length; i++) {
+            tabcontent[i].style.display = "none";
+        }
+
+        // Remover a classe "active" de todos os links de aba
+        const tablinks = document.getElementsByClassName("tab-link");
+        for (let i = 0; i < tablinks.length; i++) {
+            tablinks[i].className = tablinks[i].className.replace(" active", "");
+        }
+
+        // Mostrar a aba atual e adicionar a classe "active" ao botão que abriu a aba
+        document.getElementById(tabName).style.display = "block";
+        evt.currentTarget.className += " active";
+        
+        // Salva a aba ativa no localStorage
+        localStorage.setItem('activeOrderTab', tabName);
+    }
+
+    // Garante que a aba ativa seja exibida corretamente no carregamento
+    document.addEventListener('DOMContentLoaded', () => {
+        const activeTab = localStorage.getItem('activeOrderTab') || 'entregas';
+        document.querySelector(`.tab-link[onclick*="'${activeTab}'"]`).click();
     });
 </script>
 {% endblock %}

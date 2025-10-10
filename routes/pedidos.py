@@ -22,25 +22,15 @@ def listar_pedidos():
     """
     Rota para listar os pedidos. A lógica de negócio foi movida para o serviço.
     """
-    pedidos_finais, _ = pedidos_service.get_pedidos_para_listar()
+    pedidos_finais, _, sync_time = pedidos_service.get_pedidos_para_listar()
 
-    # Define uma lista fixa de todos os status possíveis na ordem desejada
     ALL_POSSIBLE_STATUSES = [
-        'Pendente',
-        'Em separação',
-        'Picking Incompleto',
-        'Aguardando Packing',
-        'Packing Finalizado'
+        'Pendente', 'Em separação', 'Picking Incompleto',
+        'Aguardando Packing', 'Packing Finalizado'
     ]
 
-    # Lógica de filtro, por ser ligada à requisição, permanece na rota.
     filter_cliente = request.args.get('cliente', '').strip()
-    
-    if 'status' in request.args:
-        filter_status = request.args.getlist('status')
-    else:
-        # Filtro padrão para não exibir pedidos já concluídos
-        filter_status = [s for s in ALL_POSSIBLE_STATUSES if s != 'Packing Finalizado']
+    filter_status = request.args.getlist('status') or [s for s in ALL_POSSIBLE_STATUSES if s != 'Packing Finalizado']
 
     if filter_cliente:
         normalized_filter = strip_accents(filter_cliente.lower())
@@ -52,10 +42,16 @@ def listar_pedidos():
             if any(loc['Status'] in filter_status for loc in p['locations'])
         ]
 
+    # Separa os pedidos por tipo de entrega
+    pedidos_entrega = [p for p in pedidos_finais if p.get('U_TU_QuemEntrega') != '02']
+    pedidos_retira = [p for p in pedidos_finais if p.get('U_TU_QuemEntrega') == '02']
+
     return render_template('pedidos.html',
-                           pedidos_agrupados=pedidos_finais,
-                           all_statuses=ALL_POSSIBLE_STATUSES, # Passa a lista fixa para o template
-                           current_filters={'cliente': filter_cliente, 'status': filter_status})
+                           pedidos_entrega=pedidos_entrega,
+                           pedidos_retira=pedidos_retira,
+                           all_statuses=ALL_POSSIBLE_STATUSES,
+                           current_filters={'cliente': filter_cliente, 'status': filter_status},
+                           sync_time=sync_time)
 
 
 # --- O restante do arquivo continua o mesmo ---
