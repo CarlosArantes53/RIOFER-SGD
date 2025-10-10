@@ -40,19 +40,81 @@
 
     {% if permissions.can_view_entregas() %}
     <div id="entregas" class="tab-content">
-        </div>
+        {% for pedido in pedidos_entrega %}
+            <div class="pedido-card" data-href="{{ url_for('pedidos.visualizar_picking', abs_entry=pedido.AbsEntry) }}">
+                <div class="card-header">
+                    <h3 class="card-title">{{ pedido.CardName }}</h3>
+                </div>
+                <div class="card-body">
+                    <p>Pedido: {{ pedido.AbsEntry }}</p>
+                    {% for location in pedido.locations %}
+                        <div class="location-section">
+                            <div class="location-info">
+                                <span class="location-name">{{ location.Localizacao }}</span>
+                                <span class="status-tag status-{{ location.Status|lower|replace(' ', '-') }}">{{ location.Status }}</span>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endfor %}
+    </div>
     {% endif %}
 
     {% if permissions.can_view_retira() %}
     <div id="retira" class="tab-content">
-        </div>
+        {% for pedido in pedidos_retira %}
+            <div class="pedido-card" data-href="{{ url_for('pedidos.visualizar_picking', abs_entry=pedido.AbsEntry) }}">
+                <div class="card-header">
+                    <h3 class="card-title">{{ pedido.CardName }}</h3>
+                </div>
+                <div class="card-body">
+                    <p>Pedido: {{ pedido.AbsEntry }}</p>
+                    {% for location in pedido.locations %}
+                        <div class="location-section">
+                            <div class="location-info">
+                                <span class="location-name">{{ location.Localizacao }}</span>
+                                <span class="status-tag status-{{ location.Status|lower|replace(' ', '-') }}">{{ location.Status }}</span>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endfor %}
+    </div>
     {% endif %}
 
     {% if permissions.can_view_gerencial() %}
     <div id="gerencial" class="tab-content">
+        <div class="gerencial-section">
+            <h3>Criar Novo Usuário</h3>
+            <form action="{{ url_for('pedidos.gerencial_create_user') }}" method="POST" class="user-form">
+                <div class="form-grid">
+                    <div class="input-group">
+                        <label for="nome">Nome</label>
+                        <input type="text" id="nome" name="nome" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" name="email" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="password">Senha</label>
+                        <input type="password" id="password" name="password" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="role">Setor</label>
+                        <select id="role" name="role" required>
+                            <option value="separador">Separador</option>
+                            <option value="conferente">Conferente</option>
+                            <option value="motorista">Motorista</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="submit" class="btn">Criar Usuário</button>
+            </form>
         </div>
-    {% endif %}
-    
+
         <div class="gerencial-section">
             <h3>Gerenciar Usuários</h3>
             <div class="table-container">
@@ -83,6 +145,7 @@
                                         <option value="separador" {% if 'separador' in user_data.roles %}selected{% endif %}>Separador</option>
                                         <option value="conferente" {% if 'conferente' in user_data.roles %}selected{% endif %}>Conferente</option>
                                         <option value="motorista" {% if 'motorista' in user_data.roles %}selected{% endif %}>Motorista</option>
+                                        <option value="retira" {% if 'retira' in user_data.roles %}selected{% endif %}>Cliente retira</option>
                                     </select>
                                     <button type="submit" class="btn">Salvar</button>
                                 </form>
@@ -103,6 +166,7 @@
             </div>
         </div>
     </div>
+    {% endif %}
     
     <footer class="sync-time-footer">
         Horário de sincronização da base de dados: <strong>{{ sync_time }}</strong>
@@ -127,12 +191,19 @@
             });
         });
 
-        const activeTab = localStorage.getItem('activeOrderTab') || 'entregas';
+        // Define a aba padrão com base nas permissões do usuário
+        const defaultTab = '{{ "entregas" if permissions.can_view_entregas() else "retira" if permissions.can_view_retira() else "gerencial" }}';
+        const activeTab = localStorage.getItem('activeOrderTab') || defaultTab;
         const tabToActivate = document.querySelector(`.tab-link[onclick*="'${activeTab}'"]`);
+        
         if (tabToActivate) {
             tabToActivate.click();
         } else {
-            document.querySelector('.tab-link').click();
+            // Se a aba salva não existir (ex: permissão removida), clica na primeira disponível
+            const firstTab = document.querySelector('.tab-link');
+            if(firstTab) {
+                firstTab.click();
+            }
         }
     });
 
@@ -151,17 +222,12 @@
         }
 
         const currentTab = document.getElementById(tabName);
-        currentTab.style.display = "block";
-        currentTab.classList.add('active');
-        evt.currentTarget.classList.add('active');
-        
-        localStorage.setItem('activeOrderTab', tabName);
+        if(currentTab){
+            currentTab.style.display = "block";
+            currentTab.classList.add('active');
+            evt.currentTarget.classList.add('active');
+            localStorage.setItem('activeOrderTab', tabName);
+        }
     }
-
-    // Garante que a aba ativa seja exibida corretamente no carregamento
-    document.addEventListener('DOMContentLoaded', () => {
-        const activeTab = localStorage.getItem('activeOrderTab') || 'entregas';
-        document.querySelector(`.tab-link[onclick*="'${activeTab}'"]`).click();
-    });
 </script>
 {% endblock %}

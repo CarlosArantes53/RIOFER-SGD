@@ -1,37 +1,26 @@
 # routes/packing.py
 
-from flask import (Blueprint, render_template, request, flash, redirect,
-                   url_for, session, abort)
-from decorators import login_required
-from services import packing_service # <-- Importa o serviço
+from flask import Blueprint, flash, redirect, render_template, session, url_for
+from requests import request
+from decorators import roles_required, order_type_required
+from services import packing_service
+from permissions import UserPermissions, get_current_user_permissions
 
 packing_bp = Blueprint('packing', __name__)
 
 @packing_bp.route('/packing')
-@login_required
+@roles_required(list(UserPermissions.PACKING_ROLES))
 def listar_packing():
-    """
-    Exibe a lista de pedidos que estão aguardando o processo de packing.
-    """
-    pedidos = packing_service.get_pedidos_para_packing()
+    user_perms = get_current_user_permissions()
+    pedidos = packing_service.get_pedidos_para_packing(user_perms)
     
-    # Valores padrão para as variáveis que o template 'pedidos.html' espera
-    all_statuses = ['Aguardando Início', 'Finalizado']
-    current_filters = {'cliente': '', 'status': ['Aguardando Início']}
-
-    return render_template('pedidos.html', 
-                           pedidos_agrupados=pedidos,
-                           all_statuses=all_statuses,
-                           current_filters=current_filters)
+    return render_template('packing_list.html', 
+                           pedidos_para_packing=pedidos)
 
 
 @packing_bp.route('/packing/iniciar/<int:abs_entry>/<localizacao>', methods=['GET', 'POST'])
-@login_required
+@order_type_required
 def iniciar_packing(abs_entry, localizacao):
-    """
-    Controla a tela de conferência e finalização do packing para uma localização.
-    """
-    # Busca os pacotes formatados para exibição na tela
     pacotes = packing_service.get_pacotes_para_conferencia(abs_entry, localizacao)
     if pacotes is None:
         flash('Nenhum pacote encontrado para este pedido e localização.', 'warning')

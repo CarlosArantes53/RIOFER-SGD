@@ -1,0 +1,44 @@
+{% extends "layout.html" %}
+
+{% block title %}Fila de Packing{% endblock %}
+
+{% block content %}
+    <h1>Pedidos Aguardando Packing</h1>
+    <p>Lista de pedidos com separação finalizada, prontos para a conferência (packing).</p>
+    
+    <div class="pedidos-list-container" style="margin-top: 2rem;">
+        {% if pedidos_para_packing %}
+            {% for pedido in pedidos_para_packing %}
+                <div class="pedido-card">
+                    <div class="card-header">
+                        <div>
+                            <h3 class="card-title">{{ pedido.CardName }}</h3>
+                            <div class="card-meta">
+                                <span><strong>Pedido:</strong> <span class="pedido-abs-entry">{{ pedido.AbsEntry }}</span></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="location-section">
+                            <div class="location-info">
+                                <span class="location-name">Localização: {{ pedido.Localizacao }}</span>
+                                <span class="status-tag status-{{ pedido.Status|lower|replace(' ', '-') }}">{{ pedido.Status }}</span>
+                            </div>
+                            <div class="action-buttons">
+                                {% if pedido.Status == 'Aguardando Início' %}
+                                    <a href="{{ url_for('packing.iniciar_packing', abs_entry=pedido.AbsEntry, localizacao=pedido.Localizacao) }}" class="btn">Iniciar Packing</a>
+                                {% else %}
+                                    <span class="btn" style="background-color: var(--border-color); color: var(--text-secondary); cursor: not-allowed;">Finalizado</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="box-container" style="text-align: center;">
+                <p>Nenhum pedido aguardando packing na sua fila no momento.</p>
+            </div>
+        {% endif %}
+    </div>
+{% endblock %}

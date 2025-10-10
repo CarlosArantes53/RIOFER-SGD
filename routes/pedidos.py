@@ -1,7 +1,7 @@
 import unicodedata
 from flask import (Blueprint, render_template, abort, session, redirect,
                    url_for, flash, request)
-from decorators import roles_required
+from decorators import roles_required, order_type_required
 from services import pedidos_service
 from data import pedidos_repository
 from models.user import get_all_users, create_simple_user, update_user_data, deactivate_user
@@ -16,7 +16,7 @@ def strip_accents(text):
                    if unicodedata.category(c) != 'Mn')
 
 @pedidos_bp.route('/pedidos')
-@roles_required(list(UserPermissions.PEDIDOS_VIEW_ROLES)) # <-- Usar a lista centralizada
+@roles_required(list(UserPermissions.PEDIDOS_VIEW_ROLES))
 def listar_pedidos():
     perms = UserPermissions(session.get('user'))
     
@@ -67,7 +67,7 @@ def listar_pedidos():
                            users=users)
 
 @pedidos_bp.route('/gerencial/user/create', methods=['POST'])
-@roles_required(list(UserPermissions.GERENCIAL_ROLES))
+@roles_required(list(UserPermissions.EXPEDICA_GERENCIAL_ROLES))
 def gerencial_create_user():
     try:
         email = request.form.get('email')
@@ -89,7 +89,7 @@ def gerencial_create_user():
     return redirect(url_for('pedidos.listar_pedidos'))
 
 @pedidos_bp.route('/gerencial/user/update_role/<uid>', methods=['POST'])
-@roles_required(list(UserPermissions.GERENCIAL_ROLES))
+@roles_required(list(UserPermissions.EXPEDICA_GERENCIAL_ROLES))
 def gerencial_update_user_role(uid):
     try:
         role = request.form.get('role')
@@ -111,7 +111,7 @@ def gerencial_update_user_role(uid):
     return redirect(url_for('pedidos.listar_pedidos'))
 
 @pedidos_bp.route('/gerencial/user/deactivate/<uid>', methods=['POST'])
-@roles_required(list(UserPermissions.GERENCIAL_ROLES))
+@roles_required(list(UserPermissions.EXPEDICA_GERENCIAL_ROLES))
 def gerencial_deactivate_user(uid):
     try:
         token = session['user']['idToken']
@@ -125,7 +125,7 @@ def gerencial_deactivate_user(uid):
     return redirect(url_for('pedidos.listar_pedidos'))
 
 @pedidos_bp.route('/picking/<int:abs_entry>')
-@roles_required(list(UserPermissions.ENTREGA_ROLES))
+@order_type_required
 def visualizar_picking(abs_entry):
     df = pedidos_repository.get_picking_data()
     if df.empty:
@@ -145,7 +145,7 @@ def visualizar_picking(abs_entry):
                            card_name=card_name)
 
 @pedidos_bp.route('/picking/iniciar/<int:abs_entry>/<localizacao>')
-@roles_required(list(UserPermissions.ENTREGA_ROLES))
+@order_type_required
 def iniciar_separacao(abs_entry, localizacao):
     picking_key = f"{abs_entry}_{localizacao}"
     if 'pickings_in_progress' not in session:
@@ -166,7 +166,7 @@ def iniciar_separacao(abs_entry, localizacao):
 
 
 @pedidos_bp.route('/picking/separar/<int:abs_entry>/<localizacao>', methods=['GET', 'POST'])
-@roles_required(list(UserPermissions.ENTREGA_ROLES))
+@order_type_required
 def separar_picking(abs_entry, localizacao):
     picking_key = f"{abs_entry}_{localizacao}"
     if 'pickings_in_progress' not in session or picking_key not in session['pickings_in_progress']:
@@ -242,7 +242,7 @@ def separar_picking(abs_entry, localizacao):
                            quantidades_separadas=quantidades_separadas)
 
 @pedidos_bp.route('/picking/finalizar/<int:abs_entry>/<localizacao>', methods=['POST'])
-@roles_required(list(UserPermissions.ENTREGA_ROLES))
+@order_type_required
 def finalizar_separacao(abs_entry, localizacao):
     picking_key = f"{abs_entry}_{localizacao}"
     if 'pickings_in_progress' not in session or picking_key not in session['pickings_in_progress']:
@@ -266,7 +266,7 @@ def finalizar_separacao(abs_entry, localizacao):
     return redirect(url_for('pedidos.listar_pedidos'))
 
 @pedidos_bp.route('/picking/pacote/excluir/<int:abs_entry>/<localizacao>/<int:pacote_id>')
-@roles_required(list(UserPermissions.ENTREGA_ROLES))
+@order_type_required
 def excluir_pacote_sessao(abs_entry, localizacao, pacote_id):
     picking_key = f"{abs_entry}_{localizacao}"
     if 'pickings_in_progress' in session and picking_key in session['pickings_in_progress']:
@@ -288,7 +288,7 @@ def excluir_pacote_sessao(abs_entry, localizacao, pacote_id):
     return redirect(url_for('pedidos.separar_picking', abs_entry=abs_entry, localizacao=localizacao))
 
 @pedidos_bp.route('/picking/pacote/editar/<int:abs_entry>/<localizacao>/<int:pacote_id>', methods=['GET', 'POST'])
-@roles_required(list(UserPermissions.ENTREGA_ROLES))
+@order_type_required
 def editar_pacote_sessao(abs_entry, localizacao, pacote_id):
     picking_key = f"{abs_entry}_{localizacao}"
     if 'pickings_in_progress' not in session or picking_key not in session['pickings_in_progress']:

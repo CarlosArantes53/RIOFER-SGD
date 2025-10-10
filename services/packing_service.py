@@ -1,51 +1,55 @@
-# services/packing_service.py
-
 import pandas as pd
 from datetime import datetime
 from data import packing_repository, pedidos_repository, separacao_repository
 
-def get_pedidos_para_packing():
-    """
-    Identifica quais pedidos/localizações estão prontos para o packing.
-    Um pedido está pronto se a separação foi finalizada e não foi marcada como incompleta.
-    """
+def get_pedidos_para_packing(user_perms):
     df_pacotes = pedidos_repository.get_pacotes_data()
+    df_picking = pedidos_repository.get_picking_data()
     df_packing_finalizado = packing_repository.get_packing_data()
     df_separacao = separacao_repository.get_separacao_data()
 
-    if df_pacotes.empty:
+    if df_pacotes.empty or df_picking.empty:
         return []
 
-    # Agrupa por pedido/localização para ter uma lista única
-    pedidos_com_pacotes = df_pacotes.drop_duplicates(subset=['AbsEntry', 'Localizacao'])
+    df_picking_info = df_picking.drop_duplicates(subset=['AbsEntry'])[['AbsEntry', 'CardName', 'U_TU_QuemEntrega']]
 
-    # Conjuntos para verificação rápida de status
-    finalizados_keys = set(zip(df_packing_finalizado['AbsEntry'], df_packing_finalizado['Localizacao']))
+    df_pacotes_com_tipo = pd.merge(df_pacotes, df_picking_info[['AbsEntry', 'U_TU_QuemEntrega']], on='AbsEntry', how='left')
     
-    # Considera um picking incompleto se o log de discrepância não estiver vazio
+    pedidos_visiveis = []
+    if user_perms.can_view_entregas():
+        pedidos_visiveis.append(df_pacotes_com_tipo[df_pacotes_com_tipo['U_TU_QuemEntrega'] != '02'])
+    if user_perms.can_view_retira():
+        pedidos_visiveis.append(df_pacotes_com_tipo[df_pacotes_com_tipo['U_TU_QuemEntrega'] == '02'])
+    
+    if not pedidos_visiveis:
+        return []
+    df_pacotes_filtrados = pd.concat(pedidos_visiveis)
+
+    pedidos_para_packing_base = df_pacotes_filtrados.drop_duplicates(subset=['AbsEntry', 'Localizacao'])
+    
+    pedidos_para_packing_com_nome = pd.merge(pedidos_para_packing_base, df_picking_info[['AbsEntry', 'CardName']], on='AbsEntry', how='left')
+
+    finalizados_keys = set(zip(df_packing_finalizado['AbsEntry'], df_packing_finalizado['Localizacao']))
     incompletos_keys = set()
     df_incompleto = df_separacao[df_separacao['DiscrepancyLog'].notna() & (df_separacao['DiscrepancyLog'] != '')]
     if not df_incompleto.empty:
         incompletos_keys = set(zip(df_incompleto['AbsEntry'], df_incompleto['Localizacao']))
 
-    pedidos_para_packing = []
-    for _, row in pedidos_com_pacotes.iterrows():
+    pedidos_para_packing_final = []
+    for _, row in pedidos_para_packing_com_nome.iterrows():
         key = (row['AbsEntry'], row['Localizacao'])
 
-        # Regra de negócio: Não mostra na lista de packing se o picking foi incompleto
         if key in incompletos_keys:
             continue
 
         pedido_dict = row.to_dict()
         pedido_dict['Status'] = 'Finalizado' if key in finalizados_keys else 'Aguardando Início'
-        pedidos_para_packing.append(pedido_dict)
+        pedidos_para_packing_final.append(pedido_dict)
 
-    return pedidos_para_packing
+    return pedidos_para_packing_final
 
 def get_pacotes_para_conferencia(abs_entry, localizacao):
-    """
-    Busca e agrupa os itens dos pacotes de uma localização específica para a tela de conferência.
-    """
+
     df_pacotes = pedidos_repository.get_pacotes_data()
     pacotes_pedido = df_pacotes[(df_pacotes['AbsEntry'] == abs_entry) & (df_pacotes['Localizacao'] == localizacao)]
 
@@ -67,11 +71,7 @@ def get_pacotes_para_conferencia(abs_entry, localizacao):
 
 
 def finalizar_processo_packing(abs_entry, localizacao, form_data, pacotes_info, user_email):
-    """
-    Valida os dados do formulário de packing e, se tudo estiver correto,
-    salva o registro de finalização.
-    Retorna uma lista de erros de validação. Se a lista estiver vazia, o processo foi bem-sucedido.
-    """
+
     erros = []
     anomalias = []
 
@@ -87,21 +87,18 @@ def finalizar_processo_packing(abs_entry, localizacao, form_data, pacotes_info, 
         try:
             peso_conferido = float(peso_conferido_str)
             peso_original = float(pacote['peso_original'])
-            tolerancia = 0.05  # 5% de tolerância
+            tolerancia = 0.05
 
-            # Regra de negócio: verifica a divergência de peso
             if abs(peso_conferido - peso_original) > (peso_original * tolerancia):
                 anomalia_msg = f"Divergência de peso no Pacote {package_id}. Registrado: {peso_original:.2f} kg, Conferido: {peso_conferido:.2f} kg."
                 anomalias.append(anomalia_msg)
-                erros.append(anomalia_msg) # Também adiciona a erros para parar o processo
 
         except (ValueError, TypeError):
             erros.append(f'O peso informado para o Pacote {package_id} é inválido.')
 
     if erros:
-        return erros # Retorna a lista de erros para a rota exibir
-
-    # Se não houver erros, salva os dados
+        return erros
+    
     df_packing = packing_repository.get_packing_data()
     now = datetime.now().isoformat()
     
@@ -110,14 +107,17 @@ def finalizar_processo_packing(abs_entry, localizacao, form_data, pacotes_info, 
         'Localizacao': localizacao,
         'PackageID': pacote['id'],
         'User': user_email,
-        'StartTime': now, # Simplificado, idealmente viria do início da interação
+        'StartTime': now,
         'EndTime': now,
-        'Anomalias': "; ".join(anomalias) # Anomalias são salvas mesmo se não bloquearem
+        'Anomalias': "; ".join(anomalias) 
     } for pacote in pacotes_info]
     
     nova_conferencia = pd.DataFrame(packing_records)
+
+    df_packing = df_packing[~((df_packing['AbsEntry'] == abs_entry) & (df_packing['Localizacao'] == localizacao))]
+    
     df_packing_final = pd.concat([df_packing, nova_conferencia], ignore_index=True)
     
     packing_repository.save_packing_data(df_packing_final)
     
-    return [] # Retorna lista vazia indicando sucesso
+    return []
