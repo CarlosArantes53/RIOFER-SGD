@@ -6,6 +6,7 @@ import re
 from urllib.parse import urlencode
 from config import auth
 from datetime import datetime, timedelta
+from permissions import get_current_user_permissions
 
 def create_app():
     app = Flask(__name__)
@@ -17,6 +18,10 @@ def create_app():
     )
     app.jinja_env.add_extension('jinja2.ext.do')
 
+    @app.context_processor
+    def inject_permissions():
+        return dict(permissions=get_current_user_permissions())
+        
     @app.before_request
     def refresh_firebase_token():
         if 'user' in session and 'refreshToken' in session['user'] and 'expires_at' in session['user']:
@@ -76,7 +81,6 @@ def create_app():
         from routes.admin import admin_bp
         from routes.pedidos import pedidos_bp
         from routes.packing import packing_bp
-        # 1. Importe o novo blueprint
         from routes.painel_retirada import painel_retirada_bp 
 
         app.register_blueprint(auth_bp)
@@ -84,7 +88,6 @@ def create_app():
         app.register_blueprint(admin_bp)
         app.register_blueprint(pedidos_bp)
         app.register_blueprint(packing_bp)
-        # 2. Registre o novo blueprint
         app.register_blueprint(painel_retirada_bp)
 
         return app

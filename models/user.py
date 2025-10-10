@@ -1,3 +1,4 @@
+# models/user.py
 from config import db, auth
 
 def get_user_data(uid, token):
@@ -35,6 +36,39 @@ def create_user_with_data(email, password, roles, admin_token, **kwargs):
         return user
     except Exception as e:
         raise e
+
+def create_simple_user(email, password, nome, role, admin_token):
+    """Cria um usuário com informações básicas e um único setor específico."""
+    try:
+        if role not in ['separador', 'conferente', 'motorista']:
+            raise ValueError("O setor deve ser 'separador', 'conferente' ou 'motorista'.")
+
+        user = auth.create_user_with_email_and_password(email, password)
+        uid = user['localId']
+
+        user_data = {
+            "email": email,
+            "roles": {role: True},
+            "nome_sap": nome,
+            "codigo_vendedor": "",
+            "nome_vendedor": "",
+            "codigo_sap": ""
+        }
+        db.child("users").child(uid).set(user_data, token=admin_token)
+        return user
+    except Exception as e:
+        raise e
+
+def deactivate_user(uid, token):
+    """Inativa um usuário definindo seu setor como 'default'."""
+    try:
+        # O setor 'default' não possui permissões.
+        data = {'roles': {'default': True}}
+        db.child("users").child(uid).update(data, token=token)
+        return True
+    except Exception as e:
+        print(f"Erro ao inativar o usuário {uid}: {e}")
+        return False
 
 def update_user_data(uid, data, token):
     try:

@@ -10,143 +10,97 @@
         .btn-toggle { padding: 0.5rem 1rem; border-radius: var(--border-radius); background-color: var(--secondary-bg); border: 1px solid var(--border-color); color: var(--text-secondary); cursor: pointer; transition: all 0.2s ease-in-out; user-select: none; font-size: 0.9rem; }
         .btn-check:focus + .btn-toggle, .btn-check:hover + .btn-toggle { border-color: var(--accent-color); box-shadow: 0 0 0 2px rgba(239, 180, 16, 0.3); }
 
-        /* Estilos das Abas */
-        .tabs { display: flex; border-bottom: 2px solid var(--border-color); margin-bottom: 2rem; }
+        .tabs { display: flex; flex-wrap: wrap; border-bottom: 2px solid var(--border-color); margin-bottom: 2rem; }
         .tab-link { padding: 1rem 1.5rem; cursor: pointer; background: none; border: none; color: var(--text-secondary); font-size: 1.1rem; font-weight: 500; }
         .tab-link.active { color: var(--accent-color); border-bottom: 2px solid var(--accent-color); font-weight: bold; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
         
-        .sync-time-footer {
-            text-align: center;
-            margin-top: 3rem;
-            padding-top: 1.5rem;
-            border-top: 1px solid var(--border-color);
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-        }
+        .sync-time-footer { text-align: center; margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color); color: var(--text-secondary); font-size: 0.9rem; }
+
+        .gerencial-section { margin-bottom: 2.5rem; }
+        .gerencial-section h3 { margin-top: 0; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-color); }
+        .table-users select { padding: 0.6rem; }
     </style>
 
     <div class="filter-container" style="margin-bottom: 2rem;">
-        <form method="get" action="{{ url_for('pedidos.listar_pedidos') }}">
-            <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start;">
-                <div class="input-group" style="flex: 1 1 200px;">
-                    <label for="cliente">Filtrar por Cliente:</label>
-                    <input type="text" id="cliente" name="cliente" value="{{ current_filters.cliente or '' }}" placeholder="Digite o nome do cliente">
-                </div>
-                <div class="input-group" style="flex: 2 1 400px;">
-                    <label>Filtrar por Status:</label>
-                    <div class="btn-group-toggle" role="group">
-                        {% for status_option in all_statuses %}
-                            <input type="checkbox" class="btn-check" id="status-{{ loop.index }}" name="status" value="{{ status_option }}"
-                                   {% if status_option in current_filters.status %}checked{% endif %} autocomplete="off">
-                            <label class="btn btn-toggle status-filter-{{ status_option|replace(' ', '-')|lower }}" for="status-{{ loop.index }}">{{ status_option }}</label>
-                        {% endfor %}
-                    </div>
-                </div>
-                <div class="form-actions" style="align-self: flex-end;">
-                    <button type="submit" class="btn">Filtrar</button>
-                    <a href="{{ url_for('pedidos.listar_pedidos') }}" class="btn btn-secondary">Limpar</a>
-                </div>
-            </div>
-        </form>
-    </div>
+        </div>
 
     <div class="tabs">
-        <button class="tab-link active" onclick="openTab(event, 'entregas')">🚚 Entregas ({{ pedidos_entrega|length }})</button>
+        {% if permissions.can_view_entregas() %}
+        <button class="tab-link" onclick="openTab(event, 'entregas')">🚚 Entregas ({{ pedidos_entrega|length }})</button>
+        {% endif %}
+        {% if permissions.can_view_retira() %}
         <button class="tab-link" onclick="openTab(event, 'retira')">📦 Cliente Retira ({{ pedidos_retira|length }})</button>
+        {% endif %}
+        {% if permissions.can_view_gerencial() %}
+        <button class="tab-link" onclick="openTab(event, 'gerencial')">⚙️ Gerencial</button>
+        {% endif %}
     </div>
 
-    <div id="entregas" class="tab-content active">
-        <div class="pedidos-list-container">
-            {% for grupo in pedidos_entrega %}
-                {% set outer_loop = loop %}
-                {% set bar_colors = ['#EFB410', '#4a5568'] %}
-                <div class="pedido-card" data-href="{{ url_for('pedidos.visualizar_picking', abs_entry=grupo.AbsEntry) }}" style="border-left-color: {{ bar_colors[outer_loop.index0 % 2] }};">
-                    <div class="card-header">
-                        <h2 class="card-title"><span class="pedido-abs-entry">#{{ grupo.AbsEntry }}</span> - {{ grupo.CardName }}</h2>
-                        <div class="card-meta">
-                            <span>🚚 Entrega</span>
-                            <span>📍 {{ grupo.U_GI_Cidade }}</span>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        {% for local in grupo.locations %}
-                        <div class="location-section">
-                            <div class="location-info">
-                                <span class="location-name">{{ local.Localizacao }}</span>
-                                <span class="status-tag status-{{ local.Status|replace(' ', '-')|lower }}">{{ local.StatusCompleto }}</span>
-                            </div>
-                            <div class="action-buttons">
-                                {% set status = local.Status %}
-                                {% set user_in_separation = local.UserInSeparation %}
-                                {% if 'Em separação' in status and user_in_separation == session.user['email'] %}
-                                    <a href="{{ url_for('pedidos.separar_picking', abs_entry=grupo.AbsEntry, localizacao=local.Localizacao) }}" class="btn">Continuar Separação</a>
-                                {% elif 'Em separação' in status %}
-                                    <button class="btn" disabled>Em separação</button>
-                                {% elif status == 'Picking Incompleto' %}
-                                    <a href="{{ url_for('pedidos.iniciar_separacao', abs_entry=grupo.AbsEntry, localizacao=local.Localizacao) }}" class="btn">Retomar Picking</a>
-                                {% elif status == 'Aguardando Packing' %}
-                                    <a href="{{ url_for('packing.iniciar_packing', abs_entry=grupo.AbsEntry, localizacao=local.Localizacao) }}" class="btn">Iniciar Packing</a>
-                                {% elif status == 'Packing Finalizado' %}
-                                    <button class="btn" disabled>Concluído</button>
-                                {% else %}
-                                    <a href="{{ url_for('pedidos.iniciar_separacao', abs_entry=grupo.AbsEntry, localizacao=local.Localizacao) }}" class="btn">Iniciar Separação</a>
-                                {% endif %}
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-            {% else %}
-                <div class="box-container" style="text-align: center;"><p>Nenhum pedido de entrega encontrado com os filtros aplicados.</p></div>
-            {% endfor %}
+    {% if permissions.can_view_entregas() %}
+    <div id="entregas" class="tab-content">
         </div>
-    </div>
+    {% endif %}
 
+    {% if permissions.can_view_retira() %}
     <div id="retira" class="tab-content">
-        <div class="pedidos-list-container">
-            {% for grupo in pedidos_retira %}
-                 {% set outer_loop = loop %}
-                {% set bar_colors = ['#EFB410', '#4a5568'] %}
-                <div class="pedido-card" data-href="{{ url_for('pedidos.visualizar_picking', abs_entry=grupo.AbsEntry) }}" style="border-left-color: {{ bar_colors[outer_loop.index0 % 2] }};">
-                    <div class="card-header">
-                        <h2 class="card-title"><span class="pedido-abs-entry">#{{ grupo.AbsEntry }}</span> - {{ grupo.CardName }}</h2>
-                        <div class="card-meta">
-                            <span>📦 Retirada</span>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        {% for local in grupo.locations %}
-                        <div class="location-section">
-                            <div class="location-info">
-                                <span class="location-name">{{ local.Localizacao }}</span>
-                                <span class="status-tag status-{{ local.Status|replace(' ', '-')|lower }}">{{ local.StatusCompleto }}</span>
-                            </div>
-                            <div class="action-buttons">
-                                {% set status = local.Status %}
-                                {% set user_in_separation = local.UserInSeparation %}
-                                {% if 'Em separação' in status and user_in_separation == session.user['email'] %}
-                                    <a href="{{ url_for('pedidos.separar_picking', abs_entry=grupo.AbsEntry, localizacao=local.Localizacao) }}" class="btn">Continuar Separação</a>
-                                {% elif 'Em separação' in status %}
-                                    <button class="btn" disabled>Em separação</button>
-                                {% elif status == 'Picking Incompleto' %}
-                                    <a href="{{ url_for('pedidos.iniciar_separacao', abs_entry=grupo.AbsEntry, localizacao=local.Localizacao) }}" class="btn">Retomar Picking</a>
-                                {% elif status == 'Aguardando Packing' %}
-                                    <a href="{{ url_for('packing.iniciar_packing', abs_entry=grupo.AbsEntry, localizacao=local.Localizacao) }}" class="btn">Iniciar Packing</a>
-                                {% elif status == 'Packing Finalizado' %}
-                                    <button class="btn" disabled>Concluído</button>
-                                {% else %}
-                                    <a href="{{ url_for('pedidos.iniciar_separacao', abs_entry=grupo.AbsEntry, localizacao=local.Localizacao) }}" class="btn">Iniciar Separação</a>
-                                {% endif %}
-                            </div>
-                        </div>
+        </div>
+    {% endif %}
+
+    {% if permissions.can_view_gerencial() %}
+    <div id="gerencial" class="tab-content">
+        </div>
+    {% endif %}
+    
+        <div class="gerencial-section">
+            <h3>Gerenciar Usuários</h3>
+            <div class="table-container">
+                <table class="table-users">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Email</th>
+                            <th>Setor Atual</th>
+                            <th>Mudar Setor</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for uid, user_data in users.items() %}
+                        <tr>
+                            <td>{{ user_data.nome_sap or 'N/A' }}</td>
+                            <td>{{ user_data.email }}</td>
+                            <td>
+                                {% set role = user_data.roles.keys()|first if user_data.roles else 'default' %}
+                                <span class="status-tag status-{{ role|replace(' ', '-')|lower }}">
+                                    {{ role|replace('default', 'Inativo')|title }}
+                                </span>
+                            </td>
+                            <td>
+                                <form action="{{ url_for('pedidos.gerencial_update_user_role', uid=uid) }}" method="POST" style="display: flex; gap: 10px; align-items: center;">
+                                    <select name="role" class="input-group" style="margin-bottom: 0; flex-grow: 1;">
+                                        <option value="separador" {% if 'separador' in user_data.roles %}selected{% endif %}>Separador</option>
+                                        <option value="conferente" {% if 'conferente' in user_data.roles %}selected{% endif %}>Conferente</option>
+                                        <option value="motorista" {% if 'motorista' in user_data.roles %}selected{% endif %}>Motorista</option>
+                                    </select>
+                                    <button type="submit" class="btn">Salvar</button>
+                                </form>
+                            </td>
+                            <td>
+                                <form action="{{ url_for('pedidos.gerencial_deactivate_user', uid=uid) }}" method="POST">
+                                    <button type="submit" class="btn btn-danger" onclick="return confirm('Tem certeza que deseja inativar este usuário? Ele perderá todos os acessos.')">Inativar</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" style="text-align: center;">Nenhum usuário para gerenciar.</td>
+                        </tr>
                         {% endfor %}
-                    </div>
-                </div>
-            {% else %}
-                <div class="box-container" style="text-align: center;"><p>Nenhum pedido de retirada encontrado com os filtros aplicados.</p></div>
-            {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
     
@@ -173,13 +127,12 @@
             });
         });
 
-        // Lógica para manter a aba ativa após o reload (usando localStorage)
-        const activeTab = localStorage.getItem('activeOrderTab');
-        if (activeTab) {
-            document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
-            document.querySelectorAll('.tab-link').forEach(tl => tl.classList.remove('active'));
-            document.getElementById(activeTab).classList.add('active');
-            document.querySelector(`.tab-link[onclick*="'${activeTab}'"]`).classList.add('active');
+        const activeTab = localStorage.getItem('activeOrderTab') || 'entregas';
+        const tabToActivate = document.querySelector(`.tab-link[onclick*="'${activeTab}'"]`);
+        if (tabToActivate) {
+            tabToActivate.click();
+        } else {
+            document.querySelector('.tab-link').click();
         }
     });
 
@@ -187,20 +140,21 @@
         // Ocultar todos os conteúdos de aba
         const tabcontent = document.getElementsByClassName("tab-content");
         for (let i = 0; i < tabcontent.length; i++) {
+            tabcontent[i].classList.remove('active');
             tabcontent[i].style.display = "none";
         }
 
         // Remover a classe "active" de todos os links de aba
         const tablinks = document.getElementsByClassName("tab-link");
         for (let i = 0; i < tablinks.length; i++) {
-            tablinks[i].className = tablinks[i].className.replace(" active", "");
+            tablinks[i].classList.remove('active');
         }
 
-        // Mostrar a aba atual e adicionar a classe "active" ao botão que abriu a aba
-        document.getElementById(tabName).style.display = "block";
-        evt.currentTarget.className += " active";
+        const currentTab = document.getElementById(tabName);
+        currentTab.style.display = "block";
+        currentTab.classList.add('active');
+        evt.currentTarget.classList.add('active');
         
-        // Salva a aba ativa no localStorage
         localStorage.setItem('activeOrderTab', tabName);
     }
 

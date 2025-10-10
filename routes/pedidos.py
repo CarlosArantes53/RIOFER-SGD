@@ -1,29 +1,27 @@
-# routes/pedidos.py
-
 import unicodedata
 from flask import (Blueprint, render_template, abort, session, redirect,
                    url_for, flash, request)
-from decorators import login_required
+from decorators import roles_required
 from services import pedidos_service
 from data import pedidos_repository
+from models.user import get_all_users, create_simple_user, update_user_data, deactivate_user
+from permissions import UserPermissions 
 
 pedidos_bp = Blueprint('pedidos', __name__)
 
 def strip_accents(text):
-    """Função utilitária para normalizar texto para filtros."""
     if text is None:
         return ''
     return ''.join(c for c in unicodedata.normalize('NFD', text)
                    if unicodedata.category(c) != 'Mn')
 
 @pedidos_bp.route('/pedidos')
-@login_required
+@roles_required(list(UserPermissions.PEDIDOS_VIEW_ROLES)) # <-- Usar a lista centralizada
 def listar_pedidos():
-    """
-    Rota para listar os pedidos. A lógica de negócio foi movida para o serviço.
-    """
+    perms = UserPermissions(session.get('user'))
+    
     pedidos_finais, _, sync_time = pedidos_service.get_pedidos_para_listar()
-
+    
     ALL_POSSIBLE_STATUSES = [
         'Pendente', 'Em separação', 'Picking Incompleto',
         'Aguardando Packing', 'Packing Finalizado'
@@ -42,26 +40,93 @@ def listar_pedidos():
             if any(loc['Status'] in filter_status for loc in p['locations'])
         ]
 
-    # Separa os pedidos por tipo de entrega
-    pedidos_entrega = [p for p in pedidos_finais if p.get('U_TU_QuemEntrega') != '02']
-    pedidos_retira = [p for p in pedidos_finais if p.get('U_TU_QuemEntrega') == '02']
+    pedidos_entrega = []
+    if perms.can_view_entregas():
+        pedidos_entrega = [p for p in pedidos_finais if p.get('U_TU_QuemEntrega') != '02']
+
+    pedidos_retira = []
+    if perms.can_view_retira():
+        pedidos_retira = [p for p in pedidos_finais if p.get('U_TU_QuemEntrega') == '02']
+
+    users = {}
+
+    if perms.can_view_gerencial():
+        id_token = session['user']['idToken']
+        all_users_data = get_all_users(token=id_token)
+        for uid, data in all_users_data.items():
+            user_roles_keys = data.get('roles', {}).keys()
+            if not user_roles_keys or any(r in ['separador', 'conferente', 'motorista', 'default', 'retira'] for r in user_roles_keys):
+                 users[uid] = data
 
     return render_template('pedidos.html',
                            pedidos_entrega=pedidos_entrega,
                            pedidos_retira=pedidos_retira,
                            all_statuses=ALL_POSSIBLE_STATUSES,
                            current_filters={'cliente': filter_cliente, 'status': filter_status},
-                           sync_time=sync_time)
+                           sync_time=sync_time,
+                           users=users)
 
+@pedidos_bp.route('/gerencial/user/create', methods=['POST'])
+@roles_required(list(UserPermissions.GERENCIAL_ROLES))
+def gerencial_create_user():
+    try:
+        email = request.form.get('email')
+        nome = request.form.get('nome')
+        password = request.form.get('password')
+        role = request.form.get('role')
 
-# --- O restante do arquivo continua o mesmo ---
+        if not all([email, nome, password, role]):
+            flash('Todos os campos são obrigatórios para criar um usuário.', 'danger')
+            return redirect(url_for('pedidos.listar_pedidos'))
+
+        admin_token = session['user']['idToken']
+        create_simple_user(email, password, nome, role, admin_token)
+        flash(f'Usuário {email} criado com sucesso no setor {role}.', 'success')
+
+    except Exception as e:
+        flash(f'Erro ao criar usuário: {e}', 'danger')
+
+    return redirect(url_for('pedidos.listar_pedidos'))
+
+@pedidos_bp.route('/gerencial/user/update_role/<uid>', methods=['POST'])
+@roles_required(list(UserPermissions.GERENCIAL_ROLES))
+def gerencial_update_user_role(uid):
+    try:
+        role = request.form.get('role')
+        if not role or role not in ['separador', 'conferente', 'motorista']:
+            flash("Setor inválido.", 'danger')
+            return redirect(url_for('pedidos.listar_pedidos'))
+
+        update_data = {'roles': [role]}
+        token = session['user']['idToken']
+
+        if update_user_data(uid, update_data, token=token):
+            flash('Setor do usuário atualizado com sucesso!', 'success')
+        else:
+            flash('Erro ao atualizar o setor do usuário.', 'danger')
+
+    except Exception as e:
+        flash(f'Erro ao atualizar usuário: {e}', 'danger')
+
+    return redirect(url_for('pedidos.listar_pedidos'))
+
+@pedidos_bp.route('/gerencial/user/deactivate/<uid>', methods=['POST'])
+@roles_required(list(UserPermissions.GERENCIAL_ROLES))
+def gerencial_deactivate_user(uid):
+    try:
+        token = session['user']['idToken']
+        if deactivate_user(uid, token):
+            flash('Usuário inativado com sucesso.', 'success')
+        else:
+            flash('Erro ao inativar usuário.', 'danger')
+    except Exception as e:
+        flash(f'Erro ao inativar usuário: {e}', 'danger')
+
+    return redirect(url_for('pedidos.listar_pedidos'))
 
 @pedidos_bp.route('/picking/<int:abs_entry>')
-@login_required
+@roles_required(list(UserPermissions.ENTREGA_ROLES))
 def visualizar_picking(abs_entry):
-    """
-    Exibe os detalhes de todos os itens de um picking, agrupados por localização.
-    """
     df = pedidos_repository.get_picking_data()
     if df.empty:
         abort(500, description="Arquivo de picking não encontrado ou erro ao ler.")
@@ -70,7 +135,6 @@ def visualizar_picking(abs_entry):
     if picking_items.empty:
         abort(404, description="Picking não encontrado.")
 
-    # Agrupa os itens por localização para exibição no template
     items_agrupados = picking_items.groupby('Localizacao')
     items_por_localizacao = {loc: group.to_dict(orient='records') for loc, group in items_agrupados}
     card_name = picking_items.iloc[0]['CardName']
@@ -81,11 +145,8 @@ def visualizar_picking(abs_entry):
                            card_name=card_name)
 
 @pedidos_bp.route('/picking/iniciar/<int:abs_entry>/<localizacao>')
-@login_required
+@roles_required(list(UserPermissions.ENTREGA_ROLES))
 def iniciar_separacao(abs_entry, localizacao):
-    """
-    Inicia a separação, atualizando o log via serviço e preparando a sessão do usuário.
-    """
     picking_key = f"{abs_entry}_{localizacao}"
     if 'pickings_in_progress' not in session:
         session['pickings_in_progress'] = {}
@@ -105,11 +166,8 @@ def iniciar_separacao(abs_entry, localizacao):
 
 
 @pedidos_bp.route('/picking/separar/<int:abs_entry>/<localizacao>', methods=['GET', 'POST'])
-@login_required
+@roles_required(list(UserPermissions.ENTREGA_ROLES))
 def separar_picking(abs_entry, localizacao):
-    """
-    Tela principal da separação, onde pacotes são criados e gerenciados na sessão.
-    """
     picking_key = f"{abs_entry}_{localizacao}"
     if 'pickings_in_progress' not in session or picking_key not in session['pickings_in_progress']:
         flash('Nenhuma separação em andamento. Inicie a separação primeiro.', 'warning')
@@ -184,11 +242,8 @@ def separar_picking(abs_entry, localizacao):
                            quantidades_separadas=quantidades_separadas)
 
 @pedidos_bp.route('/picking/finalizar/<int:abs_entry>/<localizacao>', methods=['POST'])
-@login_required
+@roles_required(list(UserPermissions.ENTREGA_ROLES))
 def finalizar_separacao(abs_entry, localizacao):
-    """
-    Finaliza o processo, enviando os dados da sessão para o serviço.
-    """
     picking_key = f"{abs_entry}_{localizacao}"
     if 'pickings_in_progress' not in session or picking_key not in session['pickings_in_progress']:
         flash('Nenhuma separação em andamento para este picking.', 'danger')
@@ -211,7 +266,7 @@ def finalizar_separacao(abs_entry, localizacao):
     return redirect(url_for('pedidos.listar_pedidos'))
 
 @pedidos_bp.route('/picking/pacote/excluir/<int:abs_entry>/<localizacao>/<int:pacote_id>')
-@login_required
+@roles_required(list(UserPermissions.ENTREGA_ROLES))
 def excluir_pacote_sessao(abs_entry, localizacao, pacote_id):
     picking_key = f"{abs_entry}_{localizacao}"
     if 'pickings_in_progress' in session and picking_key in session['pickings_in_progress']:
@@ -221,7 +276,6 @@ def excluir_pacote_sessao(abs_entry, localizacao, pacote_id):
         
         if pacote_encontrado:
             pacotes.remove(pacote_encontrado)
-            # Re-indexar IDs
             for i, p in enumerate(pacotes):
                 p['id'] = i + 1
             session.modified = True
@@ -234,7 +288,7 @@ def excluir_pacote_sessao(abs_entry, localizacao, pacote_id):
     return redirect(url_for('pedidos.separar_picking', abs_entry=abs_entry, localizacao=localizacao))
 
 @pedidos_bp.route('/picking/pacote/editar/<int:abs_entry>/<localizacao>/<int:pacote_id>', methods=['GET', 'POST'])
-@login_required
+@roles_required(list(UserPermissions.ENTREGA_ROLES))
 def editar_pacote_sessao(abs_entry, localizacao, pacote_id):
     picking_key = f"{abs_entry}_{localizacao}"
     if 'pickings_in_progress' not in session or picking_key not in session['pickings_in_progress']:
@@ -248,12 +302,10 @@ def editar_pacote_sessao(abs_entry, localizacao, pacote_id):
         flash('Pacote não encontrado.', 'danger')
         return redirect(url_for('pedidos.separar_picking', abs_entry=abs_entry, localizacao=localizacao))
 
-    # --- LINHA CORRIGIDA ---
-    df = pedidos_repository.get_picking_data() # Busca os dados do repositório
+    df = pedidos_repository.get_picking_data()
     itens_do_pedido = df[(df['AbsEntry'] == abs_entry) & (df['Localizacao'] == localizacao)]
 
     if request.method == 'POST':
-        # Calcula a quantidade já separada em OUTROS pacotes
         quantidades_outros_pacotes = {}
         for pacote in pacotes:
             if pacote['id'] != pacote_id:
@@ -269,8 +321,8 @@ def editar_pacote_sessao(abs_entry, localizacao, pacote_id):
                 nova_quantidade = float(request.form.get(f'quantidade_{item_code}', 0))
 
                 if nova_quantidade <= 0:
-                    continue # Item será removido
-
+                    continue
+                
                 total_pedido_item = itens_do_pedido[itens_do_pedido['ItemCode'] == item_code]['RelQtty'].iloc[0]
                 separado_outros = quantidades_outros_pacotes.get(item_code, 0)
 
@@ -283,8 +335,8 @@ def editar_pacote_sessao(abs_entry, localizacao, pacote_id):
 
             except (ValueError, TypeError):
                 flash(f'Quantidade inválida para o item {item_code}. Mantendo valor original.', 'warning')
-                novos_itens.append(item_no_pacote) # Mantém o item com a quantidade antiga
-        
+                novos_itens.append(item_no_pacote)
+                
         if has_error:
             return render_template('editar_pacote_sessao.html',
                            pacote=pacote_para_editar,
