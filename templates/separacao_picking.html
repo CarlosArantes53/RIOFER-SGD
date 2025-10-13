@@ -26,9 +26,9 @@
                         <tr>
                             <td>{{ item.ItemCode }}</td>
                             <td>{{ item.ItemName }}</td>
-                            <td>{{ "%.3f"|format(item.RelQtty|float) }}</td>
-                            <td>{{ "%.3f"|format(quantidades_separadas.get(item.ItemCode, 0)|float) }}</td>
-                            <td>{{ "%.3f"|format(item.RelQtty - quantidades_separadas.get(item.ItemCode, 0)) }}</td>
+                            <td>{% if item.UomCode == 'KG' or item.UomCode == 'METROS' %}{{ "%.3f"|format(item.RelQtty|float) }}{% else %}{{ "%.0f"|format(item.RelQtty|float) }}{% endif %}</td>
+                            <td>{% if item.UomCode == 'KG' or item.UomCode == 'METROS' %}{{ "%.3f"|format(quantidades_separadas.get(item.ItemCode, 0)|float) }}{% else %}{{ "%.0f"|format(quantidades_separadas.get(item.ItemCode, 0)|float) }}{% endif %}</td>
+                            <td>{% if item.UomCode == 'KG' or item.UomCode == 'METROS' %}{{ "%.3f"|format(item.RelQtty - quantidades_separadas.get(item.ItemCode, 0)) }}{% else %}{{ "%.0f"|format(item.RelQtty - quantidades_separadas.get(item.ItemCode, 0)) }}{% endif %}</td>
                             <td>{{ item.UomCode }}</td>
                             <td>
                                 {% set step = '0.001' if (item.UomCode == 'KG' or item.UomCode == 'METROS') else '1' %}
@@ -83,7 +83,7 @@
                     {% endif %}
                     <ul>
                     {% for item in pacote.itens %}
-                        <li>{{ item.ItemName }} ({{ item.ItemCode }}) - Qtd: {{ item.Quantity }} {{ item.UomCode }}</li>
+                        <li>{{ item.ItemName }} ({{ item.ItemCode }}) - Qtd: {% if item.UomCode == 'KG' or item.UomCode == 'METROS' %}{{ "%.3f"|format(item.Quantity|float) }}{% else %}{{ "%.0f"|format(item.Quantity|float) }}{% endif %} {{ item.UomCode }}</li>
                     {% endfor %}
                 </ul>
                     <div class="action-buttons" style="margin-top: 1rem;">

@@ -26,7 +26,7 @@
                         <td>{{ item.ItemCode }}</td>
                         <td>{{ item.ItemName }}</td>
                         <td>{{ item.SWeight1 }}</td>
-                        <td>{{ item.RelQtty }}</td>
+                        <td>{% if item.UomCode == 'KG' or item.UomCode == 'METROS' %}{{ "%.3f"|format(item.RelQtty|float) }}{% else %}{{ "%.0f"|format(item.RelQtty|float) }}{% endif %}</td>
                         <td>{{ item.UomCode }}</td>
                     </tr>
                     {% endfor %}

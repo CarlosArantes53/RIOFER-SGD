@@ -40,7 +40,7 @@
                     <tr>
                         <td>{{ item.ItemCode }}</td>
                         <td>{{ item.ItemName }}</td>
-                        <td><input type="number" step="any" name="quantidade_{{ item.ItemCode }}" value="{{ item.Quantity }}"></td>
+                        <td><input type="number" step="{% if item.UomCode == 'KG' or item.UomCode == 'METROS' %}0.001{% else %}1{% endif %}" name="quantidade_{{ item.ItemCode }}" value="{% if item.UomCode == 'KG' or item.UomCode == 'METROS' %}{{ item.Quantity }}{% else %}{{ "%.0f"|format(item.Quantity|float) }}{% endif %}"></td>
                     </tr>
                     {% endfor %}
                 </tbody>

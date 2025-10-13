@@ -17,7 +17,7 @@
 
             <ul>
                 {% for item in pacote.itens %}
-                    <li>{{ item.ItemName }} ({{ item.ItemCode }}) - Qtd: {{ item.Quantity }} {{ item.UomCode }}</li>
+                    <li>{{ item.ItemName }} ({{ item.ItemCode }}) - Qtd: {% if item.UomCode == 'KG' or item.UomCode == 'METROS' %}{{ "%.2f"|format(item.Quantity|float) }}{% else %}{{ "%.0f"|format(item.Quantity|float) }}{% endif %} {{ item.UomCode }}</li>
                 {% endfor %}
             </ul>
             
