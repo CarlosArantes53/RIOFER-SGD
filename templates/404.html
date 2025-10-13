@@ -1,0 +1,12 @@
+{% extends "layout.html" %}
+
+{% block title %}Página Não Encontrada{% endblock %}
+
+{% block content %}
+<div class="box-container" style="text-align: center; padding: 3rem;">
+    <h1>Oops! Página Não Encontrada (Erro 404)</h1>
+    <p>A página que você está tentando acessar não existe ou foi movida.</p>
+    <p>Por favor, verifique o endereço digitado ou retorne à página inicial.</p>
+    <a href="{{ url_for('main.home') }}" class="btn" style="margin-top: 1.5rem;">Voltar ao Início</a>
+</div>
+{% endblock %}

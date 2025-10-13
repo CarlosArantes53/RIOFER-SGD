@@ -1,0 +1,12 @@
+{% extends "layout.html" %}
+
+{% block title %}Erro Interno{% endblock %}
+
+{% block content %}
+<div class="box-container" style="text-align: center; padding: 3rem;">
+    <h1>Oops! Algo deu errado (Erro 500)</h1>
+    <p>Nossa equipe já foi notificada sobre o problema e está trabalhando para corrigi-lo.</p>
+    <p>Por favor, tente novamente mais tarde ou retorne à página inicial.</p>
+    <a href="{{ url_for('main.home') }}" class="btn" style="margin-top: 1.5rem;">Voltar ao Início</a>
+</div>
+{% endblock %}

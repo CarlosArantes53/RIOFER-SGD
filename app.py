@@ -1,12 +1,16 @@
 import os
-from flask import Flask, request, url_for, session, flash, redirect
+from flask import Flask, request, url_for, session, flash, redirect, render_template
 from flask_minify import Minify
 from markupsafe import escape, Markup
 import re
 from urllib.parse import urlencode
+
+from pytz import timezone
 from config import auth
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from permissions import get_current_user_permissions
+import logging
+from logging.handlers import RotatingFileHandler
 
 def create_app():
     app = Flask(__name__)
@@ -18,17 +22,43 @@ def create_app():
     )
     app.jinja_env.add_extension('jinja2.ext.do')
 
+    if not app.debug:
+        if not os.path.exists('logs'):
+            os.mkdir('logs')
+        file_handler = RotatingFileHandler('logs/riofer_sgd.log', maxBytes=10240, backupCount=10)
+        file_handler.setFormatter(logging.Formatter(
+            '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
+        ))
+        file_handler.setLevel(logging.INFO)
+        app.logger.addHandler(file_handler)
+        app.logger.setLevel(logging.INFO)
+        app.logger.info('Riofer SGD startup')
+
+    @app.errorhandler(404)
+    def not_found_error(error):
+        return render_template('404.html'), 404
+
+    @app.errorhandler(500)
+    def internal_error(error):
+        app.logger.error(f"Erro interno do servidor: {error}", exc_info=True)
+        return render_template('500.html'), 500
+
     @app.context_processor
     def inject_permissions():
         return dict(permissions=get_current_user_permissions())
-        
+
+    @app.context_processor
+    def inject_permissions():
+        return dict(permissions=get_current_user_permissions())
+    
     @app.before_request
     def refresh_firebase_token():
         if 'user' in session and 'refreshToken' in session['user'] and 'expires_at' in session['user']:
             
-            expires_at = datetime.fromisoformat(session['user']['expires_at'])
+            expires_at = datetime.fromisoformat(session['user']['expires_at']).replace(tzinfo=None)
             
-            if expires_at < datetime.utcnow() + timedelta(minutes=5):
+            # agora timezone existe
+            if expires_at < datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(minutes=5):
                 try:
                     user_auth_data = auth.refresh(session['user']['refreshToken'])
                     
@@ -36,7 +66,7 @@ def create_app():
                     session['user']['refreshToken'] = user_auth_data['refreshToken']
                     
                     new_expires_in = int(user_auth_data.get('expiresIn', 3600))
-                    session['user']['expires_at'] = (datetime.utcnow() + timedelta(seconds=new_expires_in)).isoformat()
+                    session['user']['expires_at'] = (datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(seconds=new_expires_in)).isoformat()
                     
                     session.modified = True 
                     
@@ -82,6 +112,7 @@ def create_app():
         from routes.pedidos import pedidos_bp
         from routes.packing import packing_bp
         from routes.painel_retirada import painel_retirada_bp 
+        from routes.mapa import mapa_bp 
 
         app.register_blueprint(auth_bp)
         app.register_blueprint(main_bp)
@@ -89,6 +120,7 @@ def create_app():
         app.register_blueprint(pedidos_bp)
         app.register_blueprint(packing_bp)
         app.register_blueprint(painel_retirada_bp)
+        app.register_blueprint(mapa_bp)
 
         return app
 

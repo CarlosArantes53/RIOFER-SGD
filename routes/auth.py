@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 from config import auth
 from models.user import get_user_data
 from decorators import login_required
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -24,7 +24,7 @@ def login():
             user_db_data = get_user_data(uid, id_token)
             
             expires_in = int(user_auth_data.get('expiresIn', 3600))
-            expires_at = datetime.utcnow() + timedelta(seconds=expires_in)
+            expires_at = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(seconds=expires_in)
             
             session['user'] = {
                 'uid': uid,
