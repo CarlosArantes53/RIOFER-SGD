@@ -1,3 +1,4 @@
+# mapa.py (apenas a rota atualizada)
 from flask import Blueprint, render_template, session, jsonify, request
 from decorators import roles_required
 from services import mapa_service
@@ -12,7 +13,18 @@ mapa_bp = Blueprint('mapa', __name__)
 def mapa_entregas():
     pedidos_para_mapa = mapa_service.get_entregas_para_mapa()
     locations_json = json.dumps([p for p in pedidos_para_mapa if not p['GeoError']])
-    return render_template('mapa_entregas.html', pedidos=pedidos_para_mapa, locations_json=locations_json)
+
+    # extrai cidades únicas, remove vazio/None, ordena alfabeticamente
+    cidades = sorted({p.get('Cidade') for p in pedidos_para_mapa if p.get('Cidade')})
+    cities_json = json.dumps(cidades)
+
+    return render_template(
+        'mapa_entregas.html',
+        pedidos=pedidos_para_mapa,
+        locations_json=locations_json,
+        cities_json=cities_json
+    )
+
 
 @mapa_bp.route('/mapa/find_geolocation/<int:abs_entry>', methods=['POST'])
 @roles_required(list(UserPermissions.ENTREGA_ROLES))

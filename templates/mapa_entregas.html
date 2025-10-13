@@ -45,12 +45,21 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-    <button id="find-all-btn" class="btn">Buscar Geolocalizações Faltantes</button>
+    <div style="display:flex; align-items:center; gap:8px;">
+        <button id="find-all-btn" class="btn">Buscar Geolocalizações Faltantes</button>
+        <!-- Filtro de cidades -->
+        <div>
+            <label for="city-filter" style="margin-right:6px;">Filtrar cidades:</label>
+            <select id="city-filter" multiple size="4" style="min-width:220px;"></select>
+            <button id="clear-city-filter" class="btn btn-secondary" style="margin-left:6px;">Limpar</button>
+        </div>
+    </div>
 </div>
+
 <div class="map-container box-container">
     <div class="sidebar">
         {% for pedido in pedidos %}
-            <div class="pedido-item" id="pedido-{{ pedido.AbsEntry }}" data-absentry="{{ pedido.AbsEntry }}" data-lat="{{ pedido.Latitude }}" data-lon="{{ pedido.Longitude }}">
+            <div class="pedido-item" id="pedido-{{ pedido.AbsEntry }}" data-absentry="{{ pedido.AbsEntry }}" data-lat="{{ pedido.Latitude }}" data-lon="{{ pedido.Longitude }}" data-city="{{ pedido.Cidade or '' }}">
                 <h4>{{ pedido.CardName }}</h4>
                 <p><strong>Pedido:</strong> {{ pedido.AbsEntry }}</p>
                 <p><strong>Status:</strong> {{ pedido.Status }}</p>
@@ -105,8 +114,7 @@ document.addEventListener('DOMContentLoaded', function () {
         statusElement.innerHTML = `<p class="status-text">Procurando geolocalização...</p>`;
         try {
             const response = await fetch(`/mapa/find_geolocation/${absEntry}`, {
-                method: 'POST',
-                headers: { 'X-CSRFToken': csrf_token }
+                method: 'POST'
             });
             const result = await response.json();
             if (result.status === 'success') {
@@ -185,7 +193,7 @@ document.addEventListener('DOMContentLoaded', function () {
             
             const response = await fetch('/mapa/save_geolocation', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf_token },
+                headers: { 'Content-Type': 'application/json'},
                 body: JSON.stringify({ abs_entry: absEntry, lat: latInput.value, lon: lonInput.value })
             });
             const result = await response.json();
@@ -215,6 +223,54 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         map.flyTo([lat, lon], 15);
     }
+        // --- popula select de cidades vindo do backend ---
+    const cities = JSON.parse('{{ cities_json|safe }}');
+    const citySelect = document.getElementById('city-filter');
+    cities.forEach(city => {
+        const opt = document.createElement('option');
+        opt.value = city;
+        opt.textContent = city;
+        citySelect.appendChild(opt);
+    });
+
+    document.getElementById('clear-city-filter').addEventListener('click', function(){
+        citySelect.selectedIndex = -1;
+        setVisibility();
+    });
+
+    function setVisibility() {
+        const selected = Array.from(citySelect.selectedOptions).map(o => o.value);
+        document.querySelectorAll('.pedido-item').forEach(item => {
+            const city = item.dataset.city || '';
+            const abs = item.dataset.absentry;
+            const show = selected.length === 0 || selected.includes(city);
+            item.style.display = show ? '' : 'none';
+            if (markers[abs]) {
+                if (show) markers[abs].addTo(map);
+                else if (map.hasLayer(markers[abs])) map.removeLayer(markers[abs]);
+            }
+        });
+
+        // ajusta bounds para marcadores visíveis
+        const visibleMarkers = Object.keys(markers)
+            .filter(abs => {
+                const el = document.getElementById(`pedido-${abs}`);
+                return el && el.style.display !== 'none' && map.hasLayer(markers[abs]) === true;
+            })
+            .map(abs => markers[abs]);
+
+        if (visibleMarkers.length > 0) {
+            const group = new L.featureGroup(visibleMarkers);
+            map.fitBounds(group.getBounds().pad(0.5));
+        }
+    }
+
+    // chama ao mudar seleção
+    citySelect.addEventListener('change', setVisibility);
+
+    // chama inicial para aplicar comportamento padrão (nenhuma seleção = tudo visível)
+    setVisibility();
+
 });
 </script>
 {% endblock %}

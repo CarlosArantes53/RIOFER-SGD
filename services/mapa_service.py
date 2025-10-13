@@ -1,3 +1,4 @@
+# mapa_service.py (apenas a função atualizada, mantenha o resto do arquivo)
 import pandas as pd
 import requests
 import time
@@ -24,6 +25,12 @@ def get_entregas_para_mapa():
     pedidos_mapa = []
     pedidos_agrupados = df_entregas.groupby('AbsEntry')
 
+    def clean_value(v):
+        if pd.isna(v):
+            return ''
+        s = str(v).strip()
+        return '' if s.lower() == 'nan' else s
+
     for abs_entry, group in pedidos_agrupados:
         pedido_info = group.iloc[0]
         lat = pd.to_numeric(pedido_info.get('U_SPS_Latitude'), errors='coerce')
@@ -31,18 +38,20 @@ def get_entregas_para_mapa():
         has_valid_coords = pd.notna(lat) and pd.notna(lon) and lat != 0 and lon != 0
 
         status = 'Pendente'
-        # ... (lógica de status)
+        # ... (lógica de status que você já tinha)
 
         endereco_parts = [
-            str(pedido_info.get('U_GI_Rua', '')),
-            str(pedido_info.get('U_GI_NumRua', '')),
-            str(pedido_info.get('U_GI_Bairro', '')),
-            str(pedido_info.get('U_GI_Cidade', '')),
-            str(pedido_info.get('U_GI_Estado', ''))
+            clean_value(pedido_info.get('U_GI_Rua', '')),
+            clean_value(pedido_info.get('U_GI_NumRua', '')),
+            clean_value(pedido_info.get('U_GI_Bairro', '')),
+            clean_value(pedido_info.get('U_GI_Cidade', '')),
+            clean_value(pedido_info.get('U_GI_Estado', ''))
         ]
         
-        # Filtra partes vazias e junta
-        endereco = ", ".join(filter(lambda x: x.strip() and x.strip().lower() != 'nan', endereco_parts))
+        endereco = ", ".join([p for p in endereco_parts if p])
+
+        # extrai cidade limpa
+        cidade = clean_value(pedido_info.get('U_GI_Cidade', ''))
 
         pedidos_mapa.append({
             'AbsEntry': int(abs_entry),
@@ -51,10 +60,12 @@ def get_entregas_para_mapa():
             'Latitude': lat if has_valid_coords else None,
             'Longitude': lon if has_valid_coords else None,
             'Endereco': endereco,
-            'GeoError': not has_valid_coords
+            'GeoError': not has_valid_coords,
+            'Cidade': cidade
         })
         
     return sorted(pedidos_mapa, key=lambda x: x['CardName'])
+
 
 def find_and_save_geolocation(abs_entry):
     """Busca a geolocalização de um pedido usando a API Nominatim e salva o resultado."""
