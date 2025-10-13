@@ -11,6 +11,9 @@ def get_pedidos_para_packing(user_perms):
     if df_pacotes.empty or df_picking.empty:
         return []
 
+    df_pacotes.dropna(subset=['Localizacao'], inplace=True)
+    df_pacotes = df_pacotes[df_pacotes['Localizacao'].str.strip() != '']
+
     df_picking_info = df_picking.drop_duplicates(subset=['AbsEntry'])[['AbsEntry', 'CardName', 'U_TU_QuemEntrega']]
 
     df_pacotes_com_tipo = pd.merge(df_pacotes, df_picking_info[['AbsEntry', 'U_TU_QuemEntrega']], on='AbsEntry', how='left')
@@ -51,7 +54,16 @@ def get_pedidos_para_packing(user_perms):
 def get_pacotes_para_conferencia(abs_entry, localizacao):
 
     df_pacotes = pedidos_repository.get_pacotes_data()
-    pacotes_pedido = df_pacotes[(df_pacotes['AbsEntry'] == abs_entry) & (df_pacotes['Localizacao'] == localizacao)]
+    
+    if df_pacotes.empty:
+        return None
+
+    df_pacotes['AbsEntry'] = pd.to_numeric(df_pacotes['AbsEntry'], errors='coerce').fillna(0).astype(int)
+
+    pacotes_pedido = df_pacotes[
+        (df_pacotes['AbsEntry'] == abs_entry) & 
+        (df_pacotes['Localizacao'] == localizacao)
+    ]
 
     if pacotes_pedido.empty:
         return None

@@ -1,16 +1,10 @@
-# services/pedidos_service.py
-
 import pandas as pd
 from datetime import datetime
 from data import pedidos_repository, separacao_repository, packing_repository
 
+
 def get_pedidos_para_listar():
-    """
-    Busca todos os dados necessários e aplica a lógica de negócio para determinar
-    o status de cada localização de cada pedido.
-    Retorna uma lista de pedidos agrupados, a lista de todos os status possíveis e 
-    o horário da última sincronização.
-    """
+
     df_picking = pedidos_repository.get_picking_data()
     df_separacao = separacao_repository.get_separacao_data()
     df_packing = packing_repository.get_packing_data()
@@ -19,22 +13,18 @@ def get_pedidos_para_listar():
     if df_picking.empty:
         return [], set(), sync_time
 
-    # Otimização: remove linhas onde a localização é nula ou vazia
     df_picking.dropna(subset=['Localizacao'], inplace=True)
     df_picking = df_picking[df_picking['Localizacao'].str.strip() != '']
 
-    # Cria um conjunto de chaves (AbsEntry, Localizacao) para buscas rápidas
     packing_finalizado_keys = set()
     if not df_packing.empty:
         packing_finalizado_keys = set(zip(df_packing['AbsEntry'], df_packing['Localizacao']))
 
-    # Indexa o DataFrame de separação para acesso rápido
     df_separacao_indexed = df_separacao.set_index(['AbsEntry', 'Localizacao'])
 
     pedidos_agrupados = {}
     all_statuses = set()
 
-    # Itera sobre os pickings únicos por pedido e localização
     for _, row in df_picking.drop_duplicates(subset=['AbsEntry', 'Localizacao']).iterrows():
         abs_entry = row['AbsEntry']
         localizacao = row['Localizacao']
@@ -77,9 +67,6 @@ def get_pedidos_para_listar():
 
 
 def iniciar_nova_separacao(abs_entry, localizacao, user_email):
-    """
-    Cria ou atualiza um registro de separação para marcar o início do processo.
-    """
     df_separacao = separacao_repository.get_separacao_data()
     condition = (df_separacao['AbsEntry'] == abs_entry) & (df_separacao['Localizacao'] == localizacao)
     separacao_existente = df_separacao[condition]
@@ -93,7 +80,6 @@ def iniciar_nova_separacao(abs_entry, localizacao, user_email):
         }])
         df_separacao = pd.concat([df_separacao, nova_separacao], ignore_index=True)
     else:
-        # Reseta o registro para uma nova tentativa de separação (caso de picking incompleto)
         df_separacao.loc[condition, 'User'] = user_email
         df_separacao.loc[condition, 'StartTime'] = start_time
         df_separacao.loc[condition, 'EndTime'] = None
@@ -105,10 +91,6 @@ def iniciar_nova_separacao(abs_entry, localizacao, user_email):
 
 
 def finalizar_processo_separacao(abs_entry, localizacao, pacotes_sessao, discrepancy_report_text):
-    """
-    Calcula discrepâncias, salva os pacotes e atualiza o log de separação.
-    """
-    # 1. Calcular discrepâncias
     df_original = pedidos_repository.get_picking_data()
     itens_originais = df_original[(df_original['AbsEntry'] == abs_entry) & (df_original['Localizacao'] == localizacao)]
     
@@ -129,7 +111,6 @@ def finalizar_processo_separacao(abs_entry, localizacao, pacotes_sessao, discrep
             
     log_string = " | ".join(discrepancy_log)
 
-    # 2. Salvar os dados dos pacotes
     pacotes_data = []
     for pacote in pacotes_sessao:
         for item in pacote['itens']:
@@ -137,20 +118,19 @@ def finalizar_processo_separacao(abs_entry, localizacao, pacotes_sessao, discrep
                 'AbsEntry': abs_entry, 'Localizacao': localizacao,
                 'PackageID': pacote['id'], 'Weight': pacote['peso'],
                 'ItemCode': item['ItemCode'], 
-                'ItemName': item['ItemName'], # <-- LINHA ADICIONADA
+                'ItemName': item['ItemName'],
                 'Quantity': item['Quantity'],
-                'Report': pacote.get('report', ''), 'Location': pacote.get('localizacao', '')
+                'Report': pacote.get('report', ''), 
+                'Location': pacote.get('localizacao', '')
             })
     
     if pacotes_data:
         df_pacotes_novos = pd.DataFrame(pacotes_data)
         df_existente = pedidos_repository.get_pacotes_data()
-        # Remove pacotes antigos deste picking antes de adicionar os novos para evitar duplicatas
         df_existente = df_existente[~((df_existente['AbsEntry'] == abs_entry) & (df_existente['Localizacao'] == localizacao))]
         df_pacotes_final = pd.concat([df_existente, df_pacotes_novos], ignore_index=True)
         pedidos_repository.save_pacotes_data(df_pacotes_final)
 
-    # 3. Atualizar o registro de separação com o resultado
     df_separacao = separacao_repository.get_separacao_data()
     condition = (df_separacao['AbsEntry'] == abs_entry) & (df_separacao['Localizacao'] == localizacao)
     df_separacao.loc[condition, 'EndTime'] = datetime.now().isoformat()

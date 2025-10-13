@@ -24,10 +24,9 @@ def iniciar_packing(abs_entry, localizacao):
     pacotes = packing_service.get_pacotes_para_conferencia(abs_entry, localizacao)
     if pacotes is None:
         flash('Nenhum pacote encontrado para este pedido e localização.', 'warning')
-        return redirect(url_for('packing.listar_packing'))
+        return redirect(url_for('pedidos.listar_pedidos'))
 
     if request.method == 'POST':
-        # Envia os dados do formulário e dos pacotes para o serviço validar e salvar
         erros = packing_service.finalizar_processo_packing(
             abs_entry=abs_entry,
             localizacao=localizacao,
@@ -38,9 +37,8 @@ def iniciar_packing(abs_entry, localizacao):
 
         if not erros:
             flash('Packing da localização finalizado com sucesso!', 'success')
-            return redirect(url_for('packing.listar_packing'))
+            return redirect(url_for('pedidos.listar_pedidos'))
         else:
-            # Se o serviço retornar erros de validação, exibe-os
             for erro in erros:
                 flash(erro, 'danger')
 
