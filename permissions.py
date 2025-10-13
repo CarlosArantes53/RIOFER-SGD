@@ -22,7 +22,7 @@ class UserPermissions:
         return not self.roles.isdisjoint(self.RETIRA_ROLES)
 
     def can_view_gerencial(self):
-        return not self.roles.isdisjoint(self.GERENCIAL_ROLES)
+        return not self.roles.isdisjoint(self.EXPEDICA_GERENCIAL_ROLES)
 
     def can_view_packing(self):
         return not self.roles.isdisjoint(self.PACKING_ROLES)

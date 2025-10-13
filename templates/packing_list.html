@@ -26,8 +26,7 @@
                             </div>
                             <div class="action-buttons">
                                 {% if pedido.Status == 'Aguardando Início' %}
-                                    <a href="{{ url_for('packing.iniciar_packing', abs_entry=pedido.AbsEntry, localizacao=pedido.Localizacao) }}" class="btn">Iniciar Packing</a>
-                                {% else %}
+                                        <a href="{{ url_for('packing.iniciar_packing', abs_entry=pedido.AbsEntry, localizacao=pedido.Localizacao) }}" class="btn">Iniciar Packing</a>                                {% else %}
                                     <span class="btn" style="background-color: var(--border-color); color: var(--text-secondary); cursor: not-allowed;">Finalizado</span>
                                 {% endif %}
                             </div>

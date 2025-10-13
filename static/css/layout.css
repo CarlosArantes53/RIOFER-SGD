@@ -51,3 +51,20 @@ footer.footer {
     margin-bottom: 2rem;
     box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
+
+.filter-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.pedidos-list-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.table-container {
+    overflow-x: auto;
+    width: 100%;
+}
