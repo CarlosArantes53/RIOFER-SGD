@@ -195,7 +195,7 @@ def separar_picking(abs_entry, localizacao):
                 quantidade = float(quantidade_str) if quantidade_str else 0
                 
                 if quantidade > 0:
-                    if uom_code != 'KG' and quantidade != int(quantidade):
+                    if (uom_code != 'KG' or uom_code != 'METROS') and quantidade != int(quantidade):
                         flash(f"Item {item_code} não aceita quantidade decimal (Unidade: {uom_code}).", 'danger')
                         has_error = True
                         break
@@ -331,7 +331,7 @@ def editar_pacote_sessao(abs_entry, localizacao, pacote_id):
                 if nova_quantidade <= 0:
                     continue
                 
-                if uom_code != 'KG' and nova_quantidade != int(nova_quantidade):
+                if (uom_code != 'KG' or uom_code != 'METROS') and nova_quantidade != int(nova_quantidade):
                     flash(f"Item {item_code} não aceita quantidade decimal (Unidade: {uom_code}).", 'danger')
                     has_error = True
                     # Mantém o item na lista para re-renderizar, mas com erro
