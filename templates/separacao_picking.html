@@ -16,6 +16,7 @@
                             <th>Qtd. Pedido</th>
                             <th>Qtd. Separada</th>
                             <th>Qtd. Pendente</th>
+                            <th>Unidade</th>
                             <th>Qtd. para o Pacote</th>
                             <th>Peso (kg)</th>
                         </tr>
@@ -25,10 +26,14 @@
                         <tr>
                             <td>{{ item.ItemCode }}</td>
                             <td>{{ item.ItemName }}</td>
-                            <td>{{ "%.2f"|format(item.RelQtty|float) }}</td>
-                            <td>{{ "%.2f"|format(quantidades_separadas.get(item.ItemCode, 0)|float) }}</td>
-                            <td>{{ "%.2f"|format(item.RelQtty - quantidades_separadas.get(item.ItemCode, 0)) }}</td>
-                            <td><input type="number" step="any" name="quantidade_{{ item.ItemCode }}" placeholder="0" class="quantidade-input" data-weight="{{ item.SWeight1 }}"></td>
+                            <td>{{ "%.3f"|format(item.RelQtty|float) }}</td>
+                            <td>{{ "%.3f"|format(quantidades_separadas.get(item.ItemCode, 0)|float) }}</td>
+                            <td>{{ "%.3f"|format(item.RelQtty - quantidades_separadas.get(item.ItemCode, 0)) }}</td>
+                            <td>{{ item.UomCode }}</td>
+                            <td>
+                                {% set step = '0.001' if item.UomCode == 'KG' else '1' %}
+                                <input type="number" step="{{ step }}" min="0" name="quantidade_{{ item.ItemCode }}" placeholder="0" class="quantidade-input" data-weight="{{ item.SWeight1 }}">
+                            </td>
                             <td class="peso-calculado">0.00</td>
                         </tr>
                         {% endfor %}
@@ -77,10 +82,10 @@
                         <p><strong>Observação:</strong> {{ pacote.report }}</p>
                     {% endif %}
                     <ul>
-                        {% for item in pacote.itens %}
-                            <li>{{ item.ItemName }} ({{ item.ItemCode }}) - Qtd: {{ item.Quantity }}</li>
-                        {% endfor %}
-                    </ul>
+                    {% for item in pacote.itens %}
+                        <li>{{ item.ItemName }} ({{ item.ItemCode }}) - Qtd: {{ item.Quantity }} {{ item.UomCode }}</li>
+                    {% endfor %}
+                </ul>
                     <div class="action-buttons" style="margin-top: 1rem;">
                         <a href="{{ url_for('pedidos.editar_pacote_sessao', abs_entry=abs_entry, localizacao=localizacao, pacote_id=pacote.id) }}" class="btn btn-secondary">Editar</a>
                         <a href="{{ url_for('pedidos.excluir_pacote_sessao', abs_entry=abs_entry, localizacao=localizacao, pacote_id=pacote.id) }}" class="btn btn-danger" onclick="return confirm('Tem certeza que deseja excluir este pacote?');">Excluir</a>

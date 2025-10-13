@@ -36,12 +36,8 @@ def get_picking_file_mtime():
         return "Não foi possível verificar a atualização."
 
 def get_pacotes_data():
-    """
-    Lê os dados de pacotes do arquivo parquet.
-    Retorna um DataFrame vazio se o arquivo não existir.
-    """
     if not os.path.exists(PACOTES_PARQUET_PATH):
-        return pd.DataFrame()
+        return pd.DataFrame(columns=['AbsEntry', 'Localizacao', 'PackageID', 'Weight', 'ItemCode', 'ItemName', 'Quantity', 'Report', 'Location'])
     try:
         return pd.read_parquet(PACOTES_PARQUET_PATH)
     except Exception as e:
@@ -49,10 +45,6 @@ def get_pacotes_data():
         return pd.DataFrame()
 
 def save_pacotes_data(df_pacotes_final):
-    """
-    Salva o DataFrame final de pacotes no arquivo parquet.
-    Substitui o conteúdo anterior.
-    """
     try:
         df_pacotes_final.to_parquet(PACOTES_PARQUET_PATH, index=False)
         return True

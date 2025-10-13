@@ -32,7 +32,7 @@ def login():
                 'idToken': id_token,
                 'refreshToken': user_auth_data['refreshToken'], 
                 'roles': user_db_data.get('roles', {}) if user_db_data else {},
-                'expires_at': expires_at.isoformat() # Armazena como string ISO
+                'expires_at': expires_at.isoformat()
             }
             return redirect(url_for('main.home'))
         except Exception as e:

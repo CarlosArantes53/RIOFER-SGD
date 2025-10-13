@@ -81,7 +81,6 @@ def get_pacotes_para_conferencia(abs_entry, localizacao):
     
     return list(pacotes_agrupados.values())
 
-
 def finalizar_processo_packing(abs_entry, localizacao, form_data, pacotes_info, user_email):
 
     erros = []

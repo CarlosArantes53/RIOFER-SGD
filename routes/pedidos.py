@@ -5,7 +5,7 @@ from decorators import roles_required, order_type_required
 from services import pedidos_service
 from data import pedidos_repository
 from models.user import get_all_users, create_simple_user, update_user_data, deactivate_user
-from permissions import UserPermissions 
+from permissions import UserPermissions
 
 pedidos_bp = Blueprint('pedidos', __name__)
 
@@ -164,7 +164,6 @@ def iniciar_separacao(abs_entry, localizacao):
     flash('Separação iniciada!', 'success')
     return redirect(url_for('pedidos.separar_picking', abs_entry=abs_entry, localizacao=localizacao))
 
-
 @pedidos_bp.route('/picking/separar/<int:abs_entry>/<localizacao>', methods=['GET', 'POST'])
 @order_type_required
 def separar_picking(abs_entry, localizacao):
@@ -189,12 +188,18 @@ def separar_picking(abs_entry, localizacao):
         has_error = False
         for _, item_pedido in picking_items_df.iterrows():
             item_code = item_pedido['ItemCode']
+            uom_code = item_pedido['UomCode']
+            
             try:
                 quantidade_str = request.form.get(f'quantidade_{item_code}', '0').replace(',', '.')
                 quantidade = float(quantidade_str) if quantidade_str else 0
                 
                 if quantidade > 0:
-                    # Validação da quantidade
+                    if uom_code != 'KG' and quantidade != int(quantidade):
+                        flash(f"Item {item_code} não aceita quantidade decimal (Unidade: {uom_code}).", 'danger')
+                        has_error = True
+                        break
+                    
                     total_pedido = item_pedido['RelQtty']
                     ja_separado = quantidades_separadas.get(item_code, 0)
                     if (ja_separado + quantidade) > total_pedido:
@@ -205,7 +210,8 @@ def separar_picking(abs_entry, localizacao):
                     itens_pacote.append({
                         "ItemCode": item_code,
                         "ItemName": item_pedido['ItemName'],
-                        "Quantity": quantidade
+                        "Quantity": quantidade,
+                        "UomCode": uom_code
                     })
             except (ValueError, TypeError):
                 flash(f"Valor inválido para a quantidade do item {item_code}.", 'danger')
@@ -317,12 +323,21 @@ def editar_pacote_sessao(abs_entry, localizacao, pacote_id):
         novos_itens = []
         for item_no_pacote in pacote_para_editar['itens']:
             item_code = item_no_pacote['ItemCode']
+            uom_code = item_no_pacote['UomCode']
+            
             try:
                 nova_quantidade = float(request.form.get(f'quantidade_{item_code}', 0))
 
                 if nova_quantidade <= 0:
                     continue
                 
+                if uom_code != 'KG' and nova_quantidade != int(nova_quantidade):
+                    flash(f"Item {item_code} não aceita quantidade decimal (Unidade: {uom_code}).", 'danger')
+                    has_error = True
+                    # Mantém o item na lista para re-renderizar, mas com erro
+                    novos_itens.append(item_no_pacote)
+                    continue
+
                 total_pedido_item = itens_do_pedido[itens_do_pedido['ItemCode'] == item_code]['RelQtty'].iloc[0]
                 separado_outros = quantidades_outros_pacotes.get(item_code, 0)
 
@@ -331,13 +346,16 @@ def editar_pacote_sessao(abs_entry, localizacao, pacote_id):
                     has_error = True
                 else:
                     item_no_pacote['Quantity'] = nova_quantidade
-                    novos_itens.append(item_no_pacote)
+                
+                novos_itens.append(item_no_pacote)
 
             except (ValueError, TypeError):
-                flash(f'Quantidade inválida para o item {item_code}. Mantendo valor original.', 'warning')
+                flash(f'Quantidade inválida para o item {item_code}.', 'warning')
                 novos_itens.append(item_no_pacote)
                 
         if has_error:
+            # Atualiza o pacote com os dados (mesmo com erro) para que o usuário veja o que digitou
+            pacote_para_editar['itens'] = novos_itens
             return render_template('editar_pacote_sessao.html',
                            pacote=pacote_para_editar,
                            abs_entry=abs_entry,
@@ -350,6 +368,7 @@ def editar_pacote_sessao(abs_entry, localizacao, pacote_id):
 
         if not pacote_para_editar['itens']:
             pacotes.remove(pacote_para_editar)
+            # Re-indexar IDs se um pacote for removido
             for i, p in enumerate(pacotes):
                 p['id'] = i + 1
             session.modified = True

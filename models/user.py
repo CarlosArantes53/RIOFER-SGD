@@ -1,4 +1,3 @@
-# models/user.py
 from config import db, auth
 
 def get_user_data(uid, token):
@@ -38,7 +37,6 @@ def create_user_with_data(email, password, roles, admin_token, **kwargs):
         raise e
 
 def create_simple_user(email, password, nome, role, admin_token):
-    """Cria um usuário com informações básicas e um único setor específico."""
     try:
         if role not in ['separador', 'conferente', 'motorista']:
             raise ValueError("O setor deve ser 'separador', 'conferente' ou 'motorista'.")

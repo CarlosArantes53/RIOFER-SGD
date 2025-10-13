@@ -1,7 +1,6 @@
 # routes/packing.py
 
-from flask import Blueprint, flash, redirect, render_template, session, url_for
-from requests import request
+from flask import Blueprint, flash, redirect, render_template, session, url_for, request
 from decorators import roles_required, order_type_required
 from services import packing_service
 from permissions import UserPermissions, get_current_user_permissions

@@ -2,7 +2,6 @@ import pandas as pd
 from datetime import datetime
 from data import pedidos_repository, separacao_repository, packing_repository
 
-
 def get_pedidos_para_listar():
 
     df_picking = pedidos_repository.get_picking_data()
@@ -120,6 +119,7 @@ def finalizar_processo_separacao(abs_entry, localizacao, pacotes_sessao, discrep
                 'ItemCode': item['ItemCode'], 
                 'ItemName': item['ItemName'],
                 'Quantity': item['Quantity'],
+                'UomCode': item.get('UomCode', ''),
                 'Report': pacote.get('report', ''), 
                 'Location': pacote.get('localizacao', '')
             })
@@ -127,6 +127,9 @@ def finalizar_processo_separacao(abs_entry, localizacao, pacotes_sessao, discrep
     if pacotes_data:
         df_pacotes_novos = pd.DataFrame(pacotes_data)
         df_existente = pedidos_repository.get_pacotes_data()
+        if not df_existente.empty:
+            df_existente['AbsEntry'] = df_existente['AbsEntry'].astype(int)
+        
         df_existente = df_existente[~((df_existente['AbsEntry'] == abs_entry) & (df_existente['Localizacao'] == localizacao))]
         df_pacotes_final = pd.concat([df_existente, df_pacotes_novos], ignore_index=True)
         pedidos_repository.save_pacotes_data(df_pacotes_final)
