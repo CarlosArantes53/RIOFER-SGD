@@ -1,0 +1,122 @@
+
+{% extends "layout.html" %}
+
+{% block title %}Ordenação da Fila de Separação{% endblock %}
+
+{% block content %}
+<style>
+    .sortable-list {
+        list-style: none;
+        padding: 0;
+        min-height: 50px;
+        background-color: var(--primary-bg);
+        border-radius: var(--border-radius);
+        padding: 0.5rem;
+    }
+    .sortable-item {
+        background-color: var(--secondary-bg);
+        padding: 0.8rem 1rem;
+        margin-bottom: 0.5rem;
+        border-radius: calc(var(--border-radius) - 4px);
+        cursor: grab;
+        border-left: 5px solid var(--accent-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .sortable-item:last-child {
+        margin-bottom: 0;
+    }
+    .sortable-ghost {
+        opacity: 0.4;
+        background: #5c6a82;
+    }
+    .ordenacao-container {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+    }
+    @media (max-width: 900px) {
+        .ordenacao-container { grid-template-columns: 1fr; }
+    }
+</style>
+
+<h1>Ordenação da Fila de Separação</h1>
+<p>Arraste e solte os pedidos para definir a ordem de prioridade na separação. A ordem é salva automaticamente.</p>
+<a href="{{ url_for('pedidos.listar_pedidos') }}" class="btn btn-secondary" style="margin-bottom: 2rem;">Voltar para Lista</a>
+
+<div class="ordenacao-container">
+    <div id="container-entrega">
+        <h2>🚚 Fila de Entregas</h2>
+        <ul id="lista-entrega" class="sortable-list">
+            {% for pedido in pedidos_entrega %}
+            <li class="sortable-item" data-id="{{ pedido.AbsEntry }}">
+                <span><strong>{{ pedido.AbsEntry }}</strong> - {{ pedido.CardName }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    <div id="container-retira">
+        <h2>📦 Fila de Retiras</h2>
+        <ul id="lista-retira" class="sortable-list">
+            {% for pedido in pedidos_retira %}
+            <li class="sortable-item" data-id="{{ pedido.AbsEntry }}">
+                <span><strong>{{ pedido.AbsEntry }}</strong> - {{ pedido.CardName }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const listaEntrega = document.getElementById('lista-entrega');
+    const listaRetira = document.getElementById('lista-retira');
+
+    // Rola a página para a seção correta com base no parâmetro 'foco'
+    const foco = '{{ foco }}';
+    if (foco === 'retira') {
+        document.getElementById('container-retira').scrollIntoView({ behavior: 'smooth' });
+    } else {
+        document.getElementById('container-entrega').scrollIntoView({ behavior: 'smooth' });
+    }
+    const salvarOrdem = async (tipo, elementList) => {
+        const ordem = Array.from(elementList.children).map(item => item.dataset.id);
+        
+        try {
+            const response = await fetch("{{ url_for('pedidos.salvar_ordenacao') }}", {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tipo: tipo, ordem: ordem })
+            });
+            const result = await response.json();
+            if (result.status !== 'success') {
+                alert('Erro ao salvar a ordem: ' + result.message);
+            }
+        } catch (error) {
+            console.error('Erro de conexão ao salvar a ordem:', error);
+            alert('Erro de conexão ao salvar a ordem.');
+        }
+    };
+
+    if (listaEntrega) {
+        new Sortable(listaEntrega, {
+            animation: 150,
+            ghostClass: 'sortable-ghost',
+            onEnd: () => salvarOrdem('entrega', listaEntrega)
+        });
+    }
+
+    if (listaRetira) {
+        new Sortable(listaRetira, {
+            animation: 150,
+            ghostClass: 'sortable-ghost',
+            onEnd: () => salvarOrdem('retira', listaRetira)
+        });
+    }
+});
+</script>
+{% endblock %}

@@ -1,6 +1,6 @@
 import unicodedata
 from flask import (Blueprint, render_template, abort, session, redirect,
-                   url_for, flash, request)
+                   url_for, flash, request, jsonify)
 from decorators import roles_required, order_type_required
 from services import pedidos_service
 from data import pedidos_repository
@@ -383,3 +383,41 @@ def editar_pacote_sessao(abs_entry, localizacao, pacote_id):
                            pacote=pacote_para_editar,
                            abs_entry=abs_entry,
                            localizacao=localizacao)
+
+
+@pedidos_bp.route('/ordenacao')
+@roles_required(list(UserPermissions.EXPEDICA_GERENCIAL_ROLES))
+def ordenacao_pedidos():
+    perms = UserPermissions(session.get('user'))
+    pedidos_finais, _, _ = pedidos_service.get_pedidos_para_listar()
+    
+    tipo_foco = request.args.get('tipo', 'entrega')
+
+    pedidos_entrega = [p for p in pedidos_finais if p.get('U_TU_QuemEntrega') != '02']
+    pedidos_retira = [p for p in pedidos_finais if p.get('U_TU_QuemEntrega') == '02']
+
+    return render_template('ordenacao_pedidos.html',
+                           pedidos_entrega=pedidos_entrega,
+                           pedidos_retira=pedidos_retira,
+                           foco=tipo_foco)
+
+
+@pedidos_bp.route('/ordenacao/salvar', methods=['POST'])
+@roles_required(list(UserPermissions.EXPEDICA_GERENCIAL_ROLES))
+def salvar_ordenacao():
+    try:
+        data = request.get_json()
+        tipo = data.get('tipo')
+        nova_ordem = data.get('ordem')
+
+        if tipo not in ['entrega', 'retira'] or not isinstance(nova_ordem, list):
+            return jsonify({'status': 'error', 'message': 'Dados inválidos.'}), 400
+
+        if pedidos_service.salvar_sequencia_pedidos(tipo, nova_ordem):
+            flash(f'Sequência de {tipo} salva com sucesso!', 'success')
+            return jsonify({'status': 'success'})
+        else:
+            return jsonify({'status': 'error', 'message': 'Falha ao salvar a sequência.'}), 500
+
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500

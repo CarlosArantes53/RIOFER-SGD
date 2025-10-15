@@ -21,7 +21,21 @@
         .gerencial-section { margin-bottom: 2.5rem; }
         .gerencial-section h3 { margin-top: 0; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-color); }
         .table-users select { padding: 0.6rem; }
+
+        .tab-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .tab-header h3 {
+            margin: 0;
+            font-size: 1.5rem;
+        }
     </style>
+
 
     <div class="filter-container" style="margin-bottom: 2rem;">
         <form method="get" action="{{ url_for('pedidos.listar_pedidos') }}">
@@ -62,35 +76,31 @@
     <div class="pedidos-list-container">
         {% if permissions.can_view_entregas() %}
         <div id="entregas" class="tab-content">
+            <div class="tab-header">
+                <h3>Pedidos para Entrega</h3>
+                {% if permissions.can_view_gerencial() %}
+                <a href="{{ url_for('pedidos.ordenacao_pedidos', tipo='entrega') }}" class="btn">📊 Ordenar Sequência</a>
+                {% endif %}
+            </div>
             {% for pedido in pedidos_entrega %}
-                <div class="pedido-card" data-href="{{ url_for('pedidos.visualizar_picking', abs_entry=pedido.AbsEntry) }}">
-                    <div class="card-header">
-                        <h3 class="card-title">{{ pedido.CardName }}</h3>
-                    </div>
-                    <div class="card-body">
-                        <p>Pedido: {{ pedido.AbsEntry }}</p>
-                        {% for location in pedido.locations %}
-                            <div class="location-section">
-                                <div class="location-info">
-                                    <span class="location-name">{{ location.Localizacao }}</span>
-                                    <span class="status-tag status-{{ location.Status|lower|replace(' ', '-') }}">{{ location.Status }}</span>
-                                </div>
-                                <div class="action-buttons">
-                                    {% if location.Status == 'Pendente' %}
-                                        <a href="{{ url_for('pedidos.iniciar_separacao', abs_entry=pedido.AbsEntry, localizacao=location.Localizacao) }}" class="btn">Iniciar Separação</a>
-                                    {% elif location.Status == 'Em separação' %}
-                                        <a href="{{ url_for('pedidos.separar_picking', abs_entry=pedido.AbsEntry, localizacao=location.Localizacao) }}" class="btn btn-secondary">Retomar Separação</a>
-                                    {% elif location.Status == 'Aguardando Packing' %}
-                                        <a href="{{ url_for('packing.iniciar_packing', abs_entry=pedido.AbsEntry, localizacao=location.Localizacao) }}" class="btn">Iniciar Packing</a>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        {% endfor %}
-                    </div>
-                </div>
-            {% endfor %}
+                {% endfor %}
         </div>
         {% endif %}
+
+        {% if permissions.can_view_retira() %}
+        <div id="retira" class="tab-content">
+            <div class="tab-header">
+                <h3>Pedidos para Retira</h3>
+                {% if permissions.can_view_gerencial() %}
+                <a href="{{ url_for('pedidos.ordenacao_pedidos', tipo='retira') }}" class="btn">📊 Ordenar Sequência</a>
+                {% endif %}
+            </div>
+            {% for pedido in pedidos_retira %}
+                {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+    
 
         {% if permissions.can_view_retira() %}
         <div id="retira" class="tab-content">

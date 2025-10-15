@@ -1,12 +1,12 @@
 import pandas as pd
 from datetime import datetime
-from data import pedidos_repository, separacao_repository, packing_repository
+from data import pedidos_repository, separacao_repository, packing_repository, sequencia_repository
 
 def get_pedidos_para_listar():
-
     df_picking = pedidos_repository.get_picking_data()
     df_separacao = separacao_repository.get_separacao_data()
     df_packing = packing_repository.get_packing_data()
+    df_sequencia = sequencia_repository.get_sequencia_data()
     sync_time = pedidos_repository.get_picking_file_mtime()
 
     if df_picking.empty:
@@ -62,8 +62,25 @@ def get_pedidos_para_listar():
         
         pedidos_agrupados[abs_entry]['locations'].append(location_info)
 
-    return list(pedidos_agrupados.values()), sorted(list(all_statuses)), sync_time
+    lista_pedidos = list(pedidos_agrupados.values())
+    if not df_sequencia.empty:
+        sequencia_map = {row['AbsEntry']: row['Ordem'] for _, row in df_sequencia.iterrows()}
+        
+        pedidos_ordenados = sorted(
+            [p for p in lista_pedidos if p['AbsEntry'] in sequencia_map],
+            key=lambda p: sequencia_map[p['AbsEntry']]
+        )
+        
+        pedidos_nao_ordenados = sorted(
+            [p for p in lista_pedidos if p['AbsEntry'] not in sequencia_map],
+            key=lambda p: p['AbsEntry']
+        )
+        
+        lista_pedidos = pedidos_ordenados + pedidos_nao_ordenados
+    else:
+        lista_pedidos = sorted(lista_pedidos, key=lambda p: p['AbsEntry'])
 
+    return lista_pedidos, sorted(list(all_statuses)), sync_time
 
 def iniciar_nova_separacao(abs_entry, localizacao, user_email):
     df_separacao = separacao_repository.get_separacao_data()
@@ -141,3 +158,17 @@ def finalizar_processo_separacao(abs_entry, localizacao, pacotes_sessao, discrep
     df_separacao.loc[condition, 'DiscrepancyReport'] = discrepancy_report_text
     
     return separacao_repository.save_separacao_data(df_separacao)
+
+def salvar_sequencia_pedidos(tipo, nova_ordem):
+    df_sequencia_atual = sequencia_repository.get_sequencia_data()
+    
+    df_sequencia_filtrada = df_sequencia_atual[df_sequencia_atual['Tipo'] != tipo]
+    
+    novos_dados = [{'AbsEntry': int(abs_entry), 'Tipo': tipo, 'Ordem': i} 
+                   for i, abs_entry in enumerate(nova_ordem)]
+    
+    df_nova_sequencia = pd.DataFrame(novos_dados)
+
+    df_final = pd.concat([df_sequencia_filtrada, df_nova_sequencia], ignore_index=True)
+    
+    return sequencia_repository.save_sequencia_data(df_final)
