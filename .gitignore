@@ -3,5 +3,4 @@
 /__pycache__
 *.parquet
 *.pyc
-*.log
-*.log.1
+/logs

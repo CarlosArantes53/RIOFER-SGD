@@ -32,8 +32,6 @@
         background: #5c6a82;
     }
     .ordenacao-container {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
         gap: 2rem;
     }
     @media (max-width: 900px) {
@@ -46,6 +44,7 @@
 <a href="{{ url_for('pedidos.listar_pedidos') }}" class="btn btn-secondary" style="margin-bottom: 2rem;">Voltar para Lista</a>
 
 <div class="ordenacao-container">
+    {% if foco == 'entrega' %}
     <div id="container-entrega">
         <h2>🚚 Fila de Entregas</h2>
         <ul id="lista-entrega" class="sortable-list">
@@ -56,6 +55,7 @@
             {% endfor %}
         </ul>
     </div>
+        {% else %}
     <div id="container-retira">
         <h2>📦 Fila de Retiras</h2>
         <ul id="lista-retira" class="sortable-list">
@@ -66,6 +66,7 @@
             {% endfor %}
         </ul>
     </div>
+        {% endif %}
 </div>
 {% endblock %}
 

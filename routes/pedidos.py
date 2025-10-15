@@ -59,12 +59,13 @@ def listar_pedidos():
                  users[uid] = data
 
     return render_template('pedidos.html',
-                           pedidos_entrega=pedidos_entrega,
-                           pedidos_retira=pedidos_retira,
-                           all_statuses=ALL_POSSIBLE_STATUSES,
-                           current_filters={'cliente': filter_cliente, 'status': filter_status},
-                           sync_time=sync_time,
-                           users=users)
+                       pedidos_entrega=pedidos_entrega,
+                       pedidos_retira=pedidos_retira,
+                       all_statuses=ALL_POSSIBLE_STATUSES,
+                       current_filters={'cliente': filter_cliente, 'status': filter_status},
+                       sync_time=sync_time,
+                       users=users,
+                       permissions=perms)
 
 @pedidos_bp.route('/gerencial/user/create', methods=['POST'])
 @roles_required(list(UserPermissions.EXPEDICA_GERENCIAL_ROLES))
@@ -389,6 +390,7 @@ def editar_pacote_sessao(abs_entry, localizacao, pacote_id):
 @roles_required(list(UserPermissions.EXPEDICA_GERENCIAL_ROLES))
 def ordenacao_pedidos():
     perms = UserPermissions(session.get('user'))
+
     pedidos_finais, _, _ = pedidos_service.get_pedidos_para_listar()
     
     tipo_foco = request.args.get('tipo', 'entrega')
@@ -396,10 +398,26 @@ def ordenacao_pedidos():
     pedidos_entrega = [p for p in pedidos_finais if p.get('U_TU_QuemEntrega') != '02']
     pedidos_retira = [p for p in pedidos_finais if p.get('U_TU_QuemEntrega') == '02']
 
+    def all_locations_pending(pedido):
+        locs = pedido.get('locations', [])
+        if not locs:
+            return False
+        return all(loc.get('Status') == 'Pendente' for loc in locs)
+
+    pedidos_entrega = [p for p in pedidos_entrega if all_locations_pending(p)]
+    pedidos_retira = [p for p in pedidos_retira if all_locations_pending(p)]
+
+    if tipo_foco == 'retira':
+        pedidos_entrega = []
+    else:
+        pedidos_retira = []
+
     return render_template('ordenacao_pedidos.html',
                            pedidos_entrega=pedidos_entrega,
                            pedidos_retira=pedidos_retira,
-                           foco=tipo_foco)
+                           foco=tipo_foco,
+                           permissions=perms)
+
 
 
 @pedidos_bp.route('/ordenacao/salvar', methods=['POST'])

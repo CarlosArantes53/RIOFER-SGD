@@ -1,4 +1,3 @@
-# mapa_service.py (apenas a função atualizada, mantenha o resto do arquivo)
 import pandas as pd
 import requests
 import time
@@ -15,7 +14,6 @@ def get_entregas_para_mapa():
 
     df_entregas = df_picking[df_picking['U_TU_QuemEntrega'] != '02'].copy()
 
-    # Sobrescreve as geolocalizações originais com as personalizadas/encontradas
     if not df_geoloc.empty:
         df_entregas.set_index('AbsEntry', inplace=True)
         df_geoloc.set_index('AbsEntry', inplace=True)
@@ -38,7 +36,6 @@ def get_entregas_para_mapa():
         has_valid_coords = pd.notna(lat) and pd.notna(lon) and lat != 0 and lon != 0
 
         status = 'Pendente'
-        # ... (lógica de status que você já tinha)
 
         endereco_parts = [
             clean_value(pedido_info.get('U_GI_Rua', '')),
@@ -50,7 +47,6 @@ def get_entregas_para_mapa():
         
         endereco = ", ".join([p for p in endereco_parts if p])
 
-        # extrai cidade limpa
         cidade = clean_value(pedido_info.get('U_GI_Cidade', ''))
 
         pedidos_mapa.append({
@@ -68,36 +64,115 @@ def get_entregas_para_mapa():
 
 
 def find_and_save_geolocation(abs_entry):
-    """Busca a geolocalização de um pedido usando a API Nominatim e salva o resultado."""
     df_picking = pedidos_repository.get_picking_data()
     pedido = df_picking[df_picking['AbsEntry'] == abs_entry].iloc[0]
-
-    # Constrói a query de busca a partir do endereço
-    # Formato "Rua, Cidade, Estado" é eficaz para o Nominatim
-    query = f"{pedido.get('U_GI_Rua', '')}, {pedido.get('U_GI_Cidade', '')}, {pedido.get('U_GI_Estado', '')}"
+    
+    rua = str(pedido.get('U_GI_Rua', '')).strip()
+    numero = str(pedido.get('U_GI_NumRua', '')).strip()
+    bairro = str(pedido.get('U_GI_Bairro', '')).strip()
+    cidade = str(pedido.get('U_GI_Cidade', '')).strip()
+    estado = str(pedido.get('U_GI_Estado', '')).strip().upper()
+    
+    rua = '' if rua.lower() == 'nan' else rua
+    numero = '' if numero.lower() == 'nan' else numero
+    bairro = '' if bairro.lower() == 'nan' else bairro
+    cidade = '' if cidade.lower() == 'nan' else cidade
+    estado = '' if estado.lower() == 'nan' else estado
     
     headers = {
-        'User-Agent': 'RioferSGD/1.0 (seu-email@exemplo.com)' # É boa prática identificar sua aplicação
+        'User-Agent': 'RioferSGD/1.0 tecnologia@riofer.com.br'
     }
-    url = f"https://nominatim.openstreetmap.org/search?q={requests.utils.quote(query)}&format=json&limit=1"
-
-    # Respeita a política de uso da API (1 requisição por segundo)
-    time.sleep(1) 
-
-    try:
-        response = requests.get(url, headers=headers, timeout=10)
-        response.raise_for_status()
-        data = response.json()
-
-        if data:
-            lat = data[0]['lat']
-            lon = data[0]['lon']
-            # Salva no nosso arquivo parquet personalizado
-            geoloc_repository.update_geolocation(abs_entry, lat, lon)
-            return {'status': 'success', 'lat': lat, 'lon': lon}
-        else:
-            return {'status': 'not_found'}
-
-    except requests.RequestException as e:
-        current_app.logger.error(f"Erro na API Nominatim para AbsEntry {abs_entry}: {e}")
-        return {'status': 'error', 'message': str(e)}
+    
+    search_strategies = []
+    
+    if rua and numero and cidade and estado:
+        search_strategies.append({
+            'query': f"{rua}, {numero}, {bairro}, {cidade}, {estado}, Brasil" if bairro 
+                    else f"{rua}, {numero}, {cidade}, {estado}, Brasil",
+            'description': 'endereço completo com número'
+        })
+    
+    if rua and bairro and cidade and estado:
+        search_strategies.append({
+            'query': f"{rua}, {bairro}, {cidade}, {estado}, Brasil",
+            'description': 'endereço com bairro sem número'
+        })
+    
+    if rua and cidade and estado:
+        search_strategies.append({
+            'query': f"{rua}, {cidade}, {estado}, Brasil",
+            'description': 'rua e cidade'
+        })
+    
+    if bairro and cidade and estado:
+        search_strategies.append({
+            'query': f"{bairro}, {cidade}, {estado}, Brasil",
+            'description': 'bairro e cidade'
+        })
+    
+    if cidade and estado:
+        search_strategies.append({
+            'query': f"{cidade}, {estado}, Brasil",
+            'description': 'cidade e estado'
+        })
+    
+    for strategy in search_strategies:
+        query = strategy['query']
+        description = strategy['description']
+        
+        params = {
+            'q': query,
+            'format': 'json',
+            'limit': 1,
+            'countrycodes': 'br',
+            'addressdetails': 1
+        }
+        
+        url = "https://nominatim.openstreetmap.org/search"
+        
+        current_app.logger.info(f"Tentando geolocalização para AbsEntry {abs_entry} - {description}: {query}")
+        
+        try:
+            time.sleep(1)
+            
+            response = requests.get(url, params=params, headers=headers, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            
+            if data and len(data) > 0:
+                result = data[0]
+                lat = result['lat']
+                lon = result['lon']
+                display_name = result.get('display_name', '')
+                
+                current_app.logger.info(
+                    f"Geolocalização encontrada para AbsEntry {abs_entry} "
+                    f"usando {description}: {display_name}"
+                )
+                
+                geoloc_repository.update_geolocation(abs_entry, lat, lon)
+                
+                return {
+                    'status': 'success',
+                    'lat': lat,
+                    'lon': lon,
+                    'display_name': display_name,
+                    'strategy': description
+                }
+        
+        except requests.RequestException as e:
+            current_app.logger.error(
+                f"Erro na API Nominatim para AbsEntry {abs_entry} "
+                f"usando {description}: {e}"
+            )
+            continue
+    
+    current_app.logger.warning(
+        f"Não foi possível encontrar geolocalização para AbsEntry {abs_entry} "
+        f"após tentar todas as estratégias"
+    )
+    
+    return {
+        'status': 'not_found',
+        'message': 'Localização não encontrada após tentar múltiplas estratégias de busca'
+    }
