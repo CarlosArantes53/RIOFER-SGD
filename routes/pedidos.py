@@ -125,9 +125,14 @@ def gerencial_deactivate_user(uid):
 
     return redirect(url_for('pedidos.listar_pedidos'))
 
+# routes/pedidos.py
+
 @pedidos_bp.route('/picking/<int:abs_entry>')
 @order_type_required
 def visualizar_picking(abs_entry):
+    # O source é obtido da URL (ex: ?source=mapa)
+    source_page = request.args.get('source', 'pedidos') 
+    
     df = pedidos_repository.get_picking_data()
     if df.empty:
         abort(500, description="Arquivo de picking não encontrado ou erro ao ler.")
@@ -143,7 +148,8 @@ def visualizar_picking(abs_entry):
     return render_template('picking_details.html',
                            items_por_localizacao=items_por_localizacao,
                            abs_entry=abs_entry,
-                           card_name=card_name)
+                           card_name=card_name,
+                           source_page=source_page)
 
 @pedidos_bp.route('/picking/iniciar/<int:abs_entry>/<localizacao>')
 @order_type_required

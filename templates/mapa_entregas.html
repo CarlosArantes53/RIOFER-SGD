@@ -3,57 +3,31 @@
 {% block title %}Mapa de Entregas{% endblock %}
 
 {% block content %}
-<style>
-    .map-container {
-        display: flex;
-        height: 80vh; /* 80% da altura da tela */
-    }
-    .sidebar {
-        width: 25%; /* Aumentado para 25% para melhor visualização */
-        height: 100%;
-        overflow-y: auto;
-        background-color: var(--secondary-bg);
-        padding: 1rem;
-        border-right: 1px solid var(--border-color);
-    }
-    #map {
-        width: 75%;
-        height: 100%;
-    }
-    .pedido-item {
-        padding: 0.8rem;
-        border-bottom: 1px solid var(--border-color);
-        cursor: pointer;
-        transition: background-color 0.2s;
-    }
-    .pedido-item:hover {
-        background-color: var(--primary-bg);
-    }
-    .pedido-item h4 { margin: 0 0 0.3rem; font-size: 1rem; }
-    .pedido-item p { margin: 0; font-size: 0.85rem; color: var(--text-secondary); }
-    .geo-error {
-        color: var(--accent-color);
-        font-weight: bold;
-    }
-    .pedido-item .actions { margin-top: 8px; display: flex; gap: 8px; }
-    .status-text { font-style: italic; color: var(--text-secondary); }
-    .edit-form { display: none; margin-top: 10px; background-color: var(--primary-bg); padding: 10px; border-radius: 8px; }
-    .edit-form input { width: calc(50% - 10px); }
-</style>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/mapa-entregas.css') }}">
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
-<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-    <div style="display:flex; align-items:center; gap:8px;">
-        <button id="find-all-btn" class="btn">Buscar Geolocalizações Faltantes</button>
-        <!-- Filtro de cidades -->
-        <div>
-            <label for="city-filter" style="margin-right:6px;">Filtrar cidades:</label>
-            <select id="city-filter" multiple size="4" style="min-width:220px;"></select>
-            <button id="clear-city-filter" class="btn btn-secondary" style="margin-left:6px;">Limpar</button>
-        </div>
+<div class="map-toolbar">
+    <div class="toolbar-actions">
+        <button id="find-all-btn" class="btn">
+            <i class="fas fa-search-location"></i> Buscar Faltantes
+        </button>
     </div>
+
+    <div class="toolbar-filter" aria-label="Filtro de cidades">
+
+
+    <div class="city-filter-container" id="city-filter-container" role="listbox" aria-multiselectable="true">
+        <!-- botões serão inseridos aqui via JS -->
+    </div>
+
+    <div class="toolbar-filter-controls">
+        <button id="select-all-cities" class="btn-clear-filter" title="Selecionar todas">Todas</button>
+        <button id="clear-city-filter" class="btn-clear-filter" title="Limpar filtro">Limpar</button>
+    </div>
+</div>
+
 </div>
 
 <div class="map-container box-container">
@@ -71,6 +45,7 @@
                     {% endif %}
                 </div>
                 <div class="actions">
+                    <a href="{{ url_for('pedidos.visualizar_picking', abs_entry=pedido.AbsEntry, source='mapa') }}" class="btn">Detalhes</a>
                     {% if pedido.GeoError %}
                         <button class="btn btn-secondary btn-find-one">Buscar</button>
                     {% endif %}
@@ -102,10 +77,17 @@ document.addEventListener('DOMContentLoaded', function () {
     const locations = JSON.parse('{{ locations_json|safe }}');
     const markers = {};
 
-    locations.forEach(loc => {
+        locations.forEach(loc => {
         if (loc.Latitude && loc.Longitude) {
             const marker = L.marker([loc.Latitude, loc.Longitude]).addTo(map);
-            marker.bindPopup(`<b>${loc.CardName}</b><br>Pedido: ${loc.AbsEntry}<br>Status: ${loc.Status}`);
+            // Conteúdo do popup atualizado com o link de detalhes
+            const popupContent = `
+                <b>${loc.CardName}</b><br>
+                Pedido: ${loc.AbsEntry}<br>
+                Status: ${loc.Status}<br>
+                <a href="/picking/${loc.AbsEntry}?source=mapa" class="btn" style="margin-top: 8px;">Ver Detalhes</a>
+            `;
+            marker.bindPopup(popupContent);
             markers[loc.AbsEntry] = marker;
         }
     });
@@ -224,14 +206,84 @@ document.addEventListener('DOMContentLoaded', function () {
         map.flyTo([lat, lon], 15);
     }
         // --- popula select de cidades vindo do backend ---
-    const cities = JSON.parse('{{ cities_json|safe }}');
-    const citySelect = document.getElementById('city-filter');
-    cities.forEach(city => {
-        const opt = document.createElement('option');
-        opt.value = city;
-        opt.textContent = city;
-        citySelect.appendChild(opt);
+    // --- popula botões de cidades vindo do backend ---
+const cities = JSON.parse('{{ cities_json|safe }}') || [];
+const container = document.getElementById('city-filter-container');
+
+// Função para criar um botão por cidade
+function createCityButton(cityName) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'city-btn';
+    btn.textContent = cityName;
+    btn.setAttribute('data-city', cityName);
+    btn.setAttribute('aria-pressed', 'false');
+    // Se quiser mostrar contagem (ex.: número de pedidos por cidade), adicione badge aqui:
+    // const badge = document.createElement('span'); badge.className = 'city-badge'; badge.textContent = count; btn.appendChild(badge);
+    btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        btn.classList.toggle('active');
+        const pressed = btn.classList.contains('active');
+        btn.setAttribute('aria-pressed', pressed ? 'true' : 'false');
+        setVisibilityFromButtons();
     });
+    return btn;
+}
+
+// Preenche o container com botões
+cities.forEach(city => {
+    const b = createCityButton(city);
+    container.appendChild(b);
+});
+
+// "Selecionar todas" e "Limpar" comportamentos
+document.getElementById('select-all-cities').addEventListener('click', () => {
+    container.querySelectorAll('.city-btn').forEach(b => {
+        b.classList.add('active');
+        b.setAttribute('aria-pressed', 'true');
+    });
+    setVisibilityFromButtons();
+});
+
+document.getElementById('clear-city-filter').addEventListener('click', () => {
+    container.querySelectorAll('.city-btn').forEach(b => {
+        b.classList.remove('active');
+        b.setAttribute('aria-pressed', 'false');
+    });
+    setVisibilityFromButtons();
+});
+
+// Função que usa os botões ativos para mostrar/ocultar pedidos e marcadores
+function setVisibilityFromButtons() {
+    const active = Array.from(container.querySelectorAll('.city-btn.active')).map(b => b.dataset.city);
+    document.querySelectorAll('.pedido-item').forEach(item => {
+        const city = item.dataset.city || '';
+        const abs = item.dataset.absentry;
+        const show = active.length === 0 || active.includes(city);
+        item.style.display = show ? '' : 'none';
+        if (markers[abs]) {
+            if (show) markers[abs].addTo(map);
+            else if (map.hasLayer(markers[abs])) map.removeLayer(markers[abs]);
+        }
+    });
+
+    // ajusta bounds para marcadores visíveis
+    const visibleMarkers = Object.keys(markers)
+        .filter(abs => {
+            const el = document.getElementById(`pedido-${abs}`);
+            return el && el.style.display !== 'none' && map.hasLayer(markers[abs]) === true;
+        })
+        .map(abs => markers[abs]);
+
+    if (visibleMarkers.length > 0) {
+        const group = new L.featureGroup(visibleMarkers);
+        map.fitBounds(group.getBounds().pad(0.5));
+    }
+}
+
+// chama inicial para aplicar comportamento padrão
+setVisibilityFromButtons();
+
 
     document.getElementById('clear-city-filter').addEventListener('click', function(){
         citySelect.selectedIndex = -1;
