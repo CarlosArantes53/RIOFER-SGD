@@ -6,6 +6,7 @@ from services import pedidos_service
 from data import pedidos_repository
 from models.user import get_all_users, create_simple_user, update_user_data, deactivate_user
 from permissions import UserPermissions
+import pandas as pd
 
 pedidos_bp = Blueprint('pedidos', __name__)
 
@@ -58,7 +59,7 @@ def listar_pedidos():
             if not user_roles_keys or any(r in ['separador', 'conferente', 'motorista', 'default', 'retira'] for r in user_roles_keys):
                  users[uid] = data
 
-    return render_template('pedidos.html',
+    return render_template('pedidos/pedidos.html',
                        pedidos_entrega=pedidos_entrega,
                        pedidos_retira=pedidos_retira,
                        all_statuses=ALL_POSSIBLE_STATUSES,
@@ -125,12 +126,9 @@ def gerencial_deactivate_user(uid):
 
     return redirect(url_for('pedidos.listar_pedidos'))
 
-# routes/pedidos.py
-
 @pedidos_bp.route('/picking/<int:abs_entry>')
 @order_type_required
 def visualizar_picking(abs_entry):
-    # O source é obtido da URL (ex: ?source=mapa)
     source_page = request.args.get('source', 'pedidos') 
     
     df = pedidos_repository.get_picking_data()
@@ -145,7 +143,7 @@ def visualizar_picking(abs_entry):
     items_por_localizacao = {loc: group.to_dict(orient='records') for loc, group in items_agrupados}
     card_name = picking_items.iloc[0]['CardName']
 
-    return render_template('picking_details.html',
+    return render_template('pedidos/picking/picking_details.html',
                            items_por_localizacao=items_por_localizacao,
                            abs_entry=abs_entry,
                            card_name=card_name,
@@ -247,8 +245,14 @@ def separar_picking(abs_entry, localizacao):
 
         return redirect(url_for('pedidos.separar_picking', abs_entry=abs_entry, localizacao=localizacao))
         
-    return render_template('separacao_picking.html',
-                           items=picking_items_df.to_dict(orient='records'),
+    items_list = picking_items_df.to_dict(orient='records')
+    for item in items_list:
+        for key, value in item.items():
+            if pd.isna(value):
+                item[key] = None    
+
+    return render_template('pedidos/picking/separacao_picking.html',
+                           items=items_list,
                            abs_entry=abs_entry,
                            localizacao=localizacao,
                            pacotes=session['pickings_in_progress'][picking_key]['pacotes'],
@@ -363,7 +367,7 @@ def editar_pacote_sessao(abs_entry, localizacao, pacote_id):
         if has_error:
             # Atualiza o pacote com os dados (mesmo com erro) para que o usuário veja o que digitou
             pacote_para_editar['itens'] = novos_itens
-            return render_template('editar_pacote_sessao.html',
+            return render_template('pedidos/pacote/editar_pacote_sessao.html',
                            pacote=pacote_para_editar,
                            abs_entry=abs_entry,
                            localizacao=localizacao)
@@ -386,7 +390,7 @@ def editar_pacote_sessao(abs_entry, localizacao, pacote_id):
             
         return redirect(url_for('pedidos.separar_picking', abs_entry=abs_entry, localizacao=localizacao))
 
-    return render_template('editar_pacote_sessao.html',
+    return render_template('pedidos/pacote/editar_pacote_sessao.html',
                            pacote=pacote_para_editar,
                            abs_entry=abs_entry,
                            localizacao=localizacao)
@@ -418,7 +422,7 @@ def ordenacao_pedidos():
     else:
         pedidos_retira = []
 
-    return render_template('ordenacao_pedidos.html',
+    return render_template('pedidos/ordenacao_pedidos.html',
                            pedidos_entrega=pedidos_entrega,
                            pedidos_retira=pedidos_retira,
                            foco=tipo_foco,

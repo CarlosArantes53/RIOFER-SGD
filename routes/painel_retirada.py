@@ -13,19 +13,19 @@ def get_picking_data():
     return pd.read_parquet(parquet_path)
 
 def get_separacao_data():
-    path = os.getenv('RIOFER_SEPARACAO_SGD', 'separacao.parquet')
+    path = os.getenv('RIOFER_SEPARACAO_SGD')
     if not os.path.exists(path):
         return pd.DataFrame()
     return pd.read_parquet(path)
 
 def get_pacotes_data():
-    path = os.getenv('RIOFER_PACOTES_SGD', 'pacotes.parquet')
+    path = os.getenv('RIOFER_PACOTES_SGD')
     if not os.path.exists(path):
         return pd.DataFrame()
     return pd.read_parquet(path)
 
 def get_packing_data():
-    path = os.getenv('RIOFER_PACKING_SGD', 'packing.parquet')
+    path = os.getenv('RIOFER_PACKING_SGD')
     if not os.path.exists(path):
         return pd.DataFrame()
     return pd.read_parquet(path)

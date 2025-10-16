@@ -82,7 +82,7 @@
 
 .btn {
     display: inline-block;
-    padding: 0.9rem 1.5rem;
+    padding: 0.5rem 0.7rem;
     background-color: var(--accent-color);
     color: var(--accent-text-color);
     border: none;

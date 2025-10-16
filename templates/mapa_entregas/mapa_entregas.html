@@ -13,14 +13,14 @@
         <button id="find-all-btn" class="btn">
             <i class="fas fa-search-location"></i> Buscar Faltantes
         </button>
+        <button id="toggle-fullscreen" class="btn" title="Alternar tela cheia">
+            <i class="fas fa-expand"></i> Tela cheia
+        </button>
     </div>
 
     <div class="toolbar-filter" aria-label="Filtro de cidades">
-
-
-    <div class="city-filter-container" id="city-filter-container" role="listbox" aria-multiselectable="true">
-        <!-- botões serão inseridos aqui via JS -->
-    </div>
+        <div class="city-filter-container" id="city-filter-container" role="listbox" aria-multiselectable="true">
+        </div>
 
     <div class="toolbar-filter-controls">
         <button id="select-all-cities" class="btn-clear-filter" title="Selecionar todas">Todas</button>
@@ -30,8 +30,8 @@
 
 </div>
 
-<div class="map-container box-container">
-    <div class="sidebar">
+<div class="map-container box-container" id="map-container">
+    <div class="sidebar" id="sidebar">
         {% for pedido in pedidos %}
             <div class="pedido-item" id="pedido-{{ pedido.AbsEntry }}" data-absentry="{{ pedido.AbsEntry }}" data-lat="{{ pedido.Latitude }}" data-lon="{{ pedido.Longitude }}" data-city="{{ pedido.Cidade or '' }}">
                 <h4>{{ pedido.CardName }}</h4>
@@ -51,278 +51,31 @@
                     {% endif %}
                     <button class="btn btn-secondary btn-edit">Editar</button>
                 </div>
-                <div class="edit-form">
-                    <input type="text" placeholder="Latitude" value="{{ pedido.Latitude or '' }}">
-                    <input type="text" placeholder="Longitude" value="{{ pedido.Longitude or '' }}">
-                    <button class="btn btn-save-geo">Salvar</button>
+                <div class="edit-form" aria-hidden="true">
+                    <div class="inputs-row">
+                        <input type="text" placeholder="Latitude" value="{{ pedido.Latitude or '' }}">
+                        <input type="text" placeholder="Longitude" value="{{ pedido.Longitude or '' }}">
+                    </div>
+                    <div class="edit-actions">
+                        <button class="btn btn-mark-map" type="button" title="Marcar no mapa">Marcar no mapa</button>
+                        <button class="btn btn-save-geo">Salvar</button>
+                        <button class="btn btn-cancel-edit">Cancelar</button>
+                    </div>
+                    <p class="edit-hint">Clique em "Marcar no mapa" e depois clique no mapa para posicionar o marcador (ou arraste o marcador).</p>
                 </div>
             </div>
         {% endfor %}
     </div>
-    <div id="map"></div>
+    <div id="map" aria-label="Mapa de entregas"></div>
 </div>
 {% endblock %}
 
 {% block scripts %}
+
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    // Coordenadas do centro do Brasil para iniciar o mapa
-    const initialCoords = [-14.2350, -51.9253];
-    const map = L.map('map').setView(initialCoords, 4);
-
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-    }).addTo(map);
-
-    const locations = JSON.parse('{{ locations_json|safe }}');
-    const markers = {};
-
-        locations.forEach(loc => {
-        if (loc.Latitude && loc.Longitude) {
-            const marker = L.marker([loc.Latitude, loc.Longitude]).addTo(map);
-            // Conteúdo do popup atualizado com o link de detalhes
-            const popupContent = `
-                <b>${loc.CardName}</b><br>
-                Pedido: ${loc.AbsEntry}<br>
-                Status: ${loc.Status}<br>
-                <a href="/picking/${loc.AbsEntry}?source=mapa" class="btn" style="margin-top: 8px;">Ver Detalhes</a>
-            `;
-            marker.bindPopup(popupContent);
-            markers[loc.AbsEntry] = marker;
-        }
-    });
-
-    async function fetchGeo(absEntry, statusElement) {
-        statusElement.innerHTML = `<p class="status-text">Procurando geolocalização...</p>`;
-        try {
-            const response = await fetch(`/mapa/find_geolocation/${absEntry}`, {
-                method: 'POST'
-            });
-            const result = await response.json();
-            if (result.status === 'success') {
-                statusElement.innerHTML = `<p style="color: #10b981;">Encontrada!</p>`;
-                // Atualizar o mapa e os dados do item
-                updateItemData(absEntry, result.lat, result.lon);
-            } else if (result.status === 'not_found') {
-                statusElement.innerHTML = `<p class="geo-error">Não encontrada.</p>`;
-            } else {
-                statusElement.innerHTML = `<p class="geo-error">Erro na busca.</p>`;
-            }
-        } catch (error) {
-            statusElement.innerHTML = `<p class="geo-error">Erro de conexão.</p>`;
-        }
-    }
-
-    if (locations.length > 0) {
-        const group = new L.featureGroup(Object.values(markers));
-        map.fitBounds(group.getBounds().pad(0.5));
-    }
-
-    // Adicionar interatividade à barra lateral
-    document.querySelectorAll('.pedido-item').forEach(item => {
-        item.addEventListener('click', function() {
-            const lat = this.dataset.lat;
-            const lon = this.dataset.lon;
-            const absEntry = this.querySelector('p').textContent.split(': ')[1];
-
-            if (lat && lon && lat !== 'None' && lon !== 'None') {
-                map.flyTo([lat, lon], 15); // Zoom de 15 no marcador
-                if (markers[absEntry]) {
-                    markers[absEntry].openPopup();
-                }
-            }
-        });
-    });
-    // Botão para buscar todas as geolocalizações faltantes
-    document.getElementById('find-all-btn').addEventListener('click', async function() {
-        this.disabled = true;
-        this.textContent = "Buscando...";
-        const itemsToFind = document.querySelectorAll('.geo-error');
-        for (const item of itemsToFind) {
-            const container = item.closest('.pedido-item');
-            const absEntry = container.dataset.absentry;
-            await fetchGeo(absEntry, container.querySelector('.geo-status'));
-        }
-        this.disabled = false;
-        this.textContent = "Buscar Geolocalizações Faltantes";
-    });
-
-    // Botões individuais de busca
-    document.querySelectorAll('.btn-find-one').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const container = this.closest('.pedido-item');
-            const absEntry = container.dataset.absentry;
-            fetchGeo(absEntry, container.querySelector('.geo-status'));
-            this.style.display = 'none'; // Esconde o botão após o clique
-        });
-    });
-
-    // Lógica para editar
-    document.querySelectorAll('.btn-edit').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const form = this.closest('.pedido-item').querySelector('.edit-form');
-            form.style.display = form.style.display === 'none' ? 'block' : 'none';
-        });
-    });
-
-    // Lógica para salvar
-    document.querySelectorAll('.btn-save-geo').forEach(btn => {
-        btn.addEventListener('click', async function() {
-            const container = this.closest('.pedido-item');
-            const absEntry = container.dataset.absentry;
-            const latInput = container.querySelector('input[placeholder="Latitude"]');
-            const lonInput = container.querySelector('input[placeholder="Longitude"]');
-            
-            const response = await fetch('/mapa/save_geolocation', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json'},
-                body: JSON.stringify({ abs_entry: absEntry, lat: latInput.value, lon: lonInput.value })
-            });
-            const result = await response.json();
-            if (result.status === 'success') {
-                alert('Salvo com sucesso!');
-                updateItemData(absEntry, latInput.value, lonInput.value);
-                container.querySelector('.edit-form').style.display = 'none';
-            } else {
-                alert('Erro ao salvar: ' + result.message);
-            }
-        });
-    });
-
-    function updateItemData(absEntry, lat, lon) {
-        const itemElement = document.getElementById(`pedido-${absEntry}`);
-        itemElement.dataset.lat = lat;
-        itemElement.dataset.lon = lon;
-        itemElement.querySelector('.geo-status').innerHTML = `<p style="color: #10b981;">Geolocalização OK.</p>`;
-        // Adicionar ou mover marcador no mapa
-        if(markers[absEntry]) {
-            markers[absEntry].setLatLng([lat, lon]);
-        } else {
-            const marker = L.marker([lat, lon]).addTo(map);
-            // ... (precisaria dos dados do popup aqui, simplificado por agora)
-            marker.bindPopup(`<b>Pedido ${absEntry}</b>`);
-            markers[absEntry] = marker;
-        }
-        map.flyTo([lat, lon], 15);
-    }
-        // --- popula select de cidades vindo do backend ---
-    // --- popula botões de cidades vindo do backend ---
-const cities = JSON.parse('{{ cities_json|safe }}') || [];
-const container = document.getElementById('city-filter-container');
-
-// Função para criar um botão por cidade
-function createCityButton(cityName) {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'city-btn';
-    btn.textContent = cityName;
-    btn.setAttribute('data-city', cityName);
-    btn.setAttribute('aria-pressed', 'false');
-    // Se quiser mostrar contagem (ex.: número de pedidos por cidade), adicione badge aqui:
-    // const badge = document.createElement('span'); badge.className = 'city-badge'; badge.textContent = count; btn.appendChild(badge);
-    btn.addEventListener('click', function (e) {
-        e.stopPropagation();
-        btn.classList.toggle('active');
-        const pressed = btn.classList.contains('active');
-        btn.setAttribute('aria-pressed', pressed ? 'true' : 'false');
-        setVisibilityFromButtons();
-    });
-    return btn;
-}
-
-// Preenche o container com botões
-cities.forEach(city => {
-    const b = createCityButton(city);
-    container.appendChild(b);
-});
-
-// "Selecionar todas" e "Limpar" comportamentos
-document.getElementById('select-all-cities').addEventListener('click', () => {
-    container.querySelectorAll('.city-btn').forEach(b => {
-        b.classList.add('active');
-        b.setAttribute('aria-pressed', 'true');
-    });
-    setVisibilityFromButtons();
-});
-
-document.getElementById('clear-city-filter').addEventListener('click', () => {
-    container.querySelectorAll('.city-btn').forEach(b => {
-        b.classList.remove('active');
-        b.setAttribute('aria-pressed', 'false');
-    });
-    setVisibilityFromButtons();
-});
-
-// Função que usa os botões ativos para mostrar/ocultar pedidos e marcadores
-function setVisibilityFromButtons() {
-    const active = Array.from(container.querySelectorAll('.city-btn.active')).map(b => b.dataset.city);
-    document.querySelectorAll('.pedido-item').forEach(item => {
-        const city = item.dataset.city || '';
-        const abs = item.dataset.absentry;
-        const show = active.length === 0 || active.includes(city);
-        item.style.display = show ? '' : 'none';
-        if (markers[abs]) {
-            if (show) markers[abs].addTo(map);
-            else if (map.hasLayer(markers[abs])) map.removeLayer(markers[abs]);
-        }
-    });
-
-    // ajusta bounds para marcadores visíveis
-    const visibleMarkers = Object.keys(markers)
-        .filter(abs => {
-            const el = document.getElementById(`pedido-${abs}`);
-            return el && el.style.display !== 'none' && map.hasLayer(markers[abs]) === true;
-        })
-        .map(abs => markers[abs]);
-
-    if (visibleMarkers.length > 0) {
-        const group = new L.featureGroup(visibleMarkers);
-        map.fitBounds(group.getBounds().pad(0.5));
-    }
-}
-
-// chama inicial para aplicar comportamento padrão
-setVisibilityFromButtons();
-
-
-    document.getElementById('clear-city-filter').addEventListener('click', function(){
-        citySelect.selectedIndex = -1;
-        setVisibility();
-    });
-
-    function setVisibility() {
-        const selected = Array.from(citySelect.selectedOptions).map(o => o.value);
-        document.querySelectorAll('.pedido-item').forEach(item => {
-            const city = item.dataset.city || '';
-            const abs = item.dataset.absentry;
-            const show = selected.length === 0 || selected.includes(city);
-            item.style.display = show ? '' : 'none';
-            if (markers[abs]) {
-                if (show) markers[abs].addTo(map);
-                else if (map.hasLayer(markers[abs])) map.removeLayer(markers[abs]);
-            }
-        });
-
-        // ajusta bounds para marcadores visíveis
-        const visibleMarkers = Object.keys(markers)
-            .filter(abs => {
-                const el = document.getElementById(`pedido-${abs}`);
-                return el && el.style.display !== 'none' && map.hasLayer(markers[abs]) === true;
-            })
-            .map(abs => markers[abs]);
-
-        if (visibleMarkers.length > 0) {
-            const group = new L.featureGroup(visibleMarkers);
-            map.fitBounds(group.getBounds().pad(0.5));
-        }
-    }
-
-    // chama ao mudar seleção
-    citySelect.addEventListener('change', setVisibility);
-
-    // chama inicial para aplicar comportamento padrão (nenhuma seleção = tudo visível)
-    setVisibility();
-
-});
+    const locations = {{ locations_json|safe }};
+    const cities = {{ cities_json|safe }} || [];
 </script>
+
+<script src="{{ url_for('static', filename='js/mapa-entregas.js') }}" defer></script>
 {% endblock %}

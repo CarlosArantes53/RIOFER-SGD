@@ -86,56 +86,58 @@ def find_and_save_geolocation(abs_entry):
     search_strategies = []
     
     if rua and numero and cidade and estado:
+        params = {'street': f"{numero} {rua}", 'city': cidade, 'state': estado}
+        if bairro:
+            params['county'] = bairro
         search_strategies.append({
-            'query': f"{rua}, {numero}, {bairro}, {cidade}, {estado}, Brasil" if bairro 
-                    else f"{rua}, {numero}, {cidade}, {estado}, Brasil",
+            'params': params,
             'description': 'endereço completo com número'
         })
     
     if rua and bairro and cidade and estado:
         search_strategies.append({
-            'query': f"{rua}, {bairro}, {cidade}, {estado}, Brasil",
+            'params': {'street': rua, 'county': bairro, 'city': cidade, 'state': estado},
             'description': 'endereço com bairro sem número'
         })
     
     if rua and cidade and estado:
         search_strategies.append({
-            'query': f"{rua}, {cidade}, {estado}, Brasil",
+            'params': {'street': rua, 'city': cidade, 'state': estado},
             'description': 'rua e cidade'
         })
     
     if bairro and cidade and estado:
         search_strategies.append({
-            'query': f"{bairro}, {cidade}, {estado}, Brasil",
+            'params': {'county': bairro, 'city': cidade, 'state': estado},
             'description': 'bairro e cidade'
         })
     
     if cidade and estado:
         search_strategies.append({
-            'query': f"{cidade}, {estado}, Brasil",
+            'params': {'city': cidade, 'state': estado},
             'description': 'cidade e estado'
         })
     
     for strategy in search_strategies:
-        query = strategy['query']
+        request_params = strategy['params'].copy()
         description = strategy['description']
-        
-        params = {
-            'q': query,
+
+        request_params.update({
             'format': 'json',
             'limit': 1,
             'countrycodes': 'br',
             'addressdetails': 1
-        }
+        })
         
         url = "https://nominatim.openstreetmap.org/search"
         
-        current_app.logger.info(f"Tentando geolocalização para AbsEntry {abs_entry} - {description}: {query}")
+        query_log = "; ".join([f"{k}: {v}" for k, v in strategy['params'].items()])
+        current_app.logger.info(f"Tentando geolocalização para AbsEntry {abs_entry} - {description}: {query_log}")
         
         try:
             time.sleep(1)
             
-            response = requests.get(url, params=params, headers=headers, timeout=10)
+            response = requests.get(url, params=request_params, headers=headers, timeout=10)
             response.raise_for_status()
             data = response.json()
             

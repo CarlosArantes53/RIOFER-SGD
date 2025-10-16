@@ -13,7 +13,7 @@ def listar_packing():
     user_perms = get_current_user_permissions()
     pedidos = packing_service.get_pedidos_para_packing(user_perms)
     
-    return render_template('templates/pedidos/paking/packing_list.html', 
+    return render_template('pedidos/packing/packing_list.html', 
                            pedidos_para_packing=pedidos)
 
 
@@ -41,7 +41,7 @@ def iniciar_packing(abs_entry, localizacao):
             for erro in erros:
                 flash(erro, 'danger')
 
-    return render_template('templates/pedidos/paking/packing_details.html',
+    return render_template('pedidos/packing/packing_details.html',
                            pacotes=pacotes,
                            abs_entry=abs_entry,
                            localizacao=localizacao)
