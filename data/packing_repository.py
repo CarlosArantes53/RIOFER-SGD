@@ -3,7 +3,7 @@
 import os
 import pandas as pd
 
-PACKING_PARQUET_PATH = os.getenv('RIOFER_PACKING_SGD', 'packing.parquet')
+PACKING_PARQUET_PATH = os.getenv('RIOFER_PACKING_SGD')
 
 def get_packing_data():
     default_cols = ['AbsEntry', 'Localizacao']

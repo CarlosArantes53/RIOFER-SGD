@@ -4,15 +4,10 @@ import os
 import pandas as pd
 from datetime import datetime
 
-# As variáveis de ambiente com os caminhos dos arquivos são a fonte da verdade.
 PICKING_PARQUET_PATH = os.getenv('RIOFER_PICKING_SGD')
-PACOTES_PARQUET_PATH = os.getenv('RIOFER_PACOTES_SGD', 'pacotes.parquet')
+PACOTES_PARQUET_PATH = os.getenv('RIOFER_PACOTES_SGD')
 
 def get_picking_data():
-    """
-    Lê os dados brutos de picking do arquivo parquet.
-    Retorna um DataFrame vazio se o arquivo não for encontrado.
-    """
     if not PICKING_PARQUET_PATH or not os.path.exists(PICKING_PARQUET_PATH):
         print("Aviso: Arquivo de picking não encontrado.")
         return pd.DataFrame()
@@ -23,9 +18,6 @@ def get_picking_data():
         return pd.DataFrame()
 
 def get_picking_file_mtime():
-    """
-    Retorna a data e hora da última modificação do arquivo de picking.
-    """
     if not PICKING_PARQUET_PATH or not os.path.exists(PICKING_PARQUET_PATH):
         return "Arquivo de dados base não encontrado."
     try:

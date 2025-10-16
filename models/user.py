@@ -58,9 +58,7 @@ def create_simple_user(email, password, nome, role, admin_token):
         raise e
 
 def deactivate_user(uid, token):
-    """Inativa um usuário definindo seu setor como 'default'."""
     try:
-        # O setor 'default' não possui permissões.
         data = {'roles': {'default': True}}
         db.child("users").child(uid).update(data, token=token)
         return True

@@ -3,7 +3,7 @@
 import os
 import pandas as pd
 
-SEPARACAO_PARQUET_PATH = os.getenv('RIOFER_SEPARACAO_SGD', 'separacao.parquet')
+SEPARACAO_PARQUET_PATH = os.getenv('RIOFER_SEPARACAO_SGD')
 
 def get_separacao_data():
     default_cols = ['AbsEntry', 'Localizacao', 'User', 'StartTime', 'EndTime', 'DiscrepancyLog', 'DiscrepancyReport']

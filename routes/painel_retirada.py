@@ -33,7 +33,7 @@ def get_packing_data():
 @painel_retirada_bp.route('/painel-retirada')
 @roles_required(list(UserPermissions.RETIRA_ROLES))
 def painel_retirada_view():
-    return render_template('painel_retirada.html')
+    return render_template('/pedidos/kpi/retira/painel_retirada.html')
 
 @painel_retirada_bp.route('/api/painel-retirada-data')
 @roles_required(list(UserPermissions.RETIRA_ROLES))
