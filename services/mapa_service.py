@@ -1,7 +1,9 @@
+# services/mapa_service.py
+
 import pandas as pd
 import requests
 import time
-from data import pedidos_repository, separacao_repository, geoloc_repository
+from data import pedidos_repository, separacao_repository, geoloc_repository, regioes_repository
 from flask import current_app
 
 def get_entregas_para_mapa():
@@ -178,3 +180,21 @@ def find_and_save_geolocation(abs_entry):
         'status': 'not_found',
         'message': 'Localização não encontrada após tentar múltiplas estratégias de busca'
     }
+
+def get_regioes():
+    df_regioes = regioes_repository.get_regioes_data()
+    if df_regioes.empty:
+        return []
+    
+    regioes_list = df_regioes.to_dict(orient='records')
+    for regiao in regioes_list:
+        if isinstance(regiao.get('Cidades'), pd.Series):
+            regiao['Cidades'] = regiao['Cidades'].tolist()
+        elif hasattr(regiao.get('Cidades'), 'tolist'): # Check for ndarray
+            regiao['Cidades'] = regiao['Cidades'].tolist()
+            
+    return regioes_list
+
+def save_regioes(regioes):
+    df_regioes = pd.DataFrame(regioes)
+    return regioes_repository.save_regioes_data(df_regioes)

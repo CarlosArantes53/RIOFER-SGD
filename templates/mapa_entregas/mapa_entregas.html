@@ -8,74 +8,112 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
-<div class="map-toolbar">
-    <div class="toolbar-actions">
-        <button id="find-all-btn" class="btn">
-            <i class="fas fa-search-location"></i> Buscar Faltantes
-        </button>
-        <button id="toggle-fullscreen" class="btn" title="Alternar tela cheia">
-            <i class="fas fa-expand"></i> Tela cheia
-        </button>
-    </div>
+<div class="tabs">
+    <button class="tab-link active" onclick="openTab(event, 'mapa')">🗺️ Mapa</button>
+    <button class="tab-link" onclick="openTab(event, 'regioes')">📍 Regiões</button>
+</div>
 
-    <div class="toolbar-filter" aria-label="Filtro de cidades">
-        <div class="city-filter-container" id="city-filter-container" role="listbox" aria-multiselectable="true">
+<div id="mapa" class="tab-content active">
+    <div class="map-toolbar">
+        <div class="toolbar-actions">
+            <button id="find-all-btn" class="btn">
+                <i class="fas fa-search-location"></i> Buscar Faltantes
+            </button>
+            <button id="toggle-fullscreen" class="btn" title="Alternar tela cheia">
+                <i class="fas fa-expand"></i> Tela cheia
+            </button>
         </div>
 
-    <div class="toolbar-filter-controls">
-        <button id="select-all-cities" class="btn-clear-filter" title="Selecionar todas">Todas</button>
-        <button id="clear-city-filter" class="btn-clear-filter" title="Limpar filtro">Limpar</button>
+        <div class="toolbar-filter" aria-label="Filtro de cidades">
+            <div class="filter-switch">
+                <label class="switch">
+                    <input type="checkbox" id="filter-toggle">
+                    <span class="slider round"></span>
+                </label>
+                <span id="filter-type-label">Cidades</span>
+            </div>
+            <div class="filter-container" id="filter-container" role="listbox" aria-multiselectable="true">
+            </div>
+            <div class="toolbar-filter-controls">
+                <button id="select-all-filters" class="btn-clear-filter" title="Selecionar todas">Todas</button>
+                <button id="clear-filters" class="btn-clear-filter" title="Limpar filtro">Limpar</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="map-container box-container" id="map-container">
+        <div class="sidebar" id="sidebar">
+            {% for pedido in pedidos %}
+                <div class="pedido-item" id="pedido-{{ pedido.AbsEntry }}" data-absentry="{{ pedido.AbsEntry }}" data-lat="{{ pedido.Latitude }}" data-lon="{{ pedido.Longitude }}" data-city="{{ pedido.Cidade or '' }}">
+                    <h4>{{ pedido.CardName }}</h4>
+                    <p><strong>Pedido:</strong> {{ pedido.AbsEntry }}</p>
+                    <p><strong>Status:</strong> {{ pedido.Status }}</p>
+                    <div class="geo-status">
+                        {% if pedido.GeoError %}
+                            <p class="geo-error">Geolocalização pendente.</p>
+                        {% else %}
+                            <p style="color: #10b981;">Geolocalização OK.</p>
+                        {% endif %}
+                    </div>
+                    <div class="actions">
+                        <a href="{{ url_for('pedidos.visualizar_picking', abs_entry=pedido.AbsEntry, source='mapa') }}" class="btn">Detalhes</a>
+                        {% if pedido.GeoError %}
+                            <button class="btn btn-secondary btn-find-one">Buscar</button>
+                        {% endif %}
+                        <button class="btn btn-secondary btn-edit">Editar</button>
+                    </div>
+                    <div class="edit-form" aria-hidden="true">
+                        <div class="inputs-row">
+                            <input type="text" placeholder="Latitude" value="{{ pedido.Latitude or '' }}">
+                            <input type="text" placeholder="Longitude" value="{{ pedido.Longitude or '' }}">
+                        </div>
+                        <div class="edit-actions">
+                            <button class="btn btn-mark-map" type="button" title="Marcar no mapa">Marcar no mapa</button>
+                            <button class="btn btn-save-geo">Salvar</button>
+                            <button class="btn btn-cancel-edit">Cancelar</button>
+                        </div>
+                        <p class="edit-hint">Clique em "Marcar no mapa" e depois clique no mapa para posicionar o marcador (ou arraste o marcador).</p>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+        <div id="map-render" aria-label="Mapa de entregas"></div>
     </div>
 </div>
 
-</div>
-
-<div class="map-container box-container" id="map-container">
-    <div class="sidebar" id="sidebar">
-        {% for pedido in pedidos %}
-            <div class="pedido-item" id="pedido-{{ pedido.AbsEntry }}" data-absentry="{{ pedido.AbsEntry }}" data-lat="{{ pedido.Latitude }}" data-lon="{{ pedido.Longitude }}" data-city="{{ pedido.Cidade or '' }}">
-                <h4>{{ pedido.CardName }}</h4>
-                <p><strong>Pedido:</strong> {{ pedido.AbsEntry }}</p>
-                <p><strong>Status:</strong> {{ pedido.Status }}</p>
-                <div class="geo-status">
-                    {% if pedido.GeoError %}
-                        <p class="geo-error">Geolocalização pendente.</p>
-                    {% else %}
-                        <p style="color: #10b981;">Geolocalização OK.</p>
-                    {% endif %}
-                </div>
-                <div class="actions">
-                    <a href="{{ url_for('pedidos.visualizar_picking', abs_entry=pedido.AbsEntry, source='mapa') }}" class="btn">Detalhes</a>
-                    {% if pedido.GeoError %}
-                        <button class="btn btn-secondary btn-find-one">Buscar</button>
-                    {% endif %}
-                    <button class="btn btn-secondary btn-edit">Editar</button>
-                </div>
-                <div class="edit-form" aria-hidden="true">
-                    <div class="inputs-row">
-                        <input type="text" placeholder="Latitude" value="{{ pedido.Latitude or '' }}">
-                        <input type="text" placeholder="Longitude" value="{{ pedido.Longitude or '' }}">
-                    </div>
-                    <div class="edit-actions">
-                        <button class="btn btn-mark-map" type="button" title="Marcar no mapa">Marcar no mapa</button>
-                        <button class="btn btn-save-geo">Salvar</button>
-                        <button class="btn btn-cancel-edit">Cancelar</button>
-                    </div>
-                    <p class="edit-hint">Clique em "Marcar no mapa" e depois clique no mapa para posicionar o marcador (ou arraste o marcador).</p>
+<div id="regioes" class="tab-content">
+    <div class="regioes-container">
+        <div class="regiao-form-container">
+            <h3>Criar Nova Região</h3>
+            <div class="input-group">
+                <label for="regiao-nome">Nome da Região:</label>
+                <input type="text" id="regiao-nome" placeholder="Ex: Zona Leste">
+            </div>
+            <div class="input-group">
+                <label>Cidades:</label>
+                <div id="cidades-toggle-container" class="cidades-toggle-container">
+                    {% for cidade in cidades %}
+                        <button type="button" class="city-toggle-btn" data-city="{{ cidade }}">{{ cidade }}</button>
+                    {% endfor %}
                 </div>
             </div>
-        {% endfor %}
+            <button id="add-regiao-btn" class="btn">Adicionar Região</button>
+        </div>
+        <div class="regioes-list-container">
+            <h3>Regiões Criadas</h3>
+            <div id="regioes-list">
+                </div>
+            <button id="save-regioes-btn" class="btn">Salvar Regiões</button>
+        </div>
     </div>
-    <div id="map" aria-label="Mapa de entregas"></div>
 </div>
 {% endblock %}
 
 {% block scripts %}
-
 <script>
     const locations = {{ locations_json|safe }};
     const cities = {{ cities_json|safe }} || [];
+    let regioes = {{ regioes_json|safe }} || [];
 </script>
-
 <script src="{{ url_for('static', filename='js/mapa-entregas.js') }}" defer></script>
 {% endblock %}

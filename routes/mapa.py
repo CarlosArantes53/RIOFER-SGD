@@ -1,3 +1,5 @@
+# routes/mapa.py
+
 from flask import Blueprint, render_template, session, jsonify, request
 from decorators import roles_required
 from services import mapa_service
@@ -15,12 +17,17 @@ def mapa_entregas():
 
     cidades = sorted({p.get('Cidade') for p in pedidos_para_mapa if p.get('Cidade')})
     cities_json = json.dumps(cidades)
+    
+    regioes = mapa_service.get_regioes()
+    regioes_json = json.dumps(regioes)
 
     return render_template(
         'mapa_entregas/mapa_entregas.html',
         pedidos=pedidos_para_mapa,
         locations_json=locations_json,
-        cities_json=cities_json
+        cities_json=cities_json,
+        regioes_json=regioes_json,
+        cidades=cidades  # <-- LINHA ADICIONADA
     )
 
 
@@ -52,3 +59,12 @@ def save_geolocation():
         return jsonify({'status': 'success'})
     else:
         return jsonify({'status': 'error', 'message': 'Falha ao salvar.'}), 500
+
+@mapa_bp.route('/mapa/save_regioes', methods=['POST'])
+@roles_required(list(UserPermissions.ENTREGA_ROLES))
+def save_regioes():
+    regioes = request.json.get('regioes', [])
+    if mapa_service.save_regioes(regioes):
+        return jsonify({'status': 'success'})
+    else:
+        return jsonify({'status': 'error', 'message': 'Falha ao salvar as regiões.'}), 500
