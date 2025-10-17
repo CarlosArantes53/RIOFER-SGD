@@ -13,10 +13,14 @@
 <body>
     <nav class="navbar">
         <a href="{{ url_for('main.home') }}" class="brand">SGD</a>
-        <div class="nav-links">
-            {% if session.user %}
+        <div class="nav-links">{% if session.user %}
                 <a href="{{ url_for('pedidos.listar_pedidos') }}">Pedidos</a>
+                {% if permissions.can_manage_rotas() %} <a href="{{ url_for('rotas.manage_rotas') }}">Rotas</a>
+                {% endif %}
                 <a href="{{ url_for('mapa.mapa_entregas') }}">Mapa de Entregas</a>
+                {% if permissions.can_manage_frota() %}
+                <a href="{{ url_for('frota.manage_frota') }}">Frota</a>
+                {% endif %}
                 <a href="{{ url_for('painel_retirada.painel_retirada_view') }}">Painel Retira</a>
                 {% if 'admin' in session.user.roles %}
                     <a href="{{ url_for('admin.manage_users') }}">Admin</a>

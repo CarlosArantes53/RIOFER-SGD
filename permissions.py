@@ -6,6 +6,8 @@ class UserPermissions:
     ENTREGA_ROLES = {'admin', 'expedicao', 'motorista', 'conferente', 'separador'}
     RETIRA_ROLES = {'admin', 'expedicao', 'retira'}
     EXPEDICA_GERENCIAL_ROLES = {'admin', 'expedicao'}
+    FROTA_ROLES = {'admin', 'expedicao'}
+    ROTA_ROLES = {'admin', 'expedicao'}
     PEDIDOS_VIEW_ROLES = ENTREGA_ROLES.union(RETIRA_ROLES)
     PACKING_ROLES = {'admin', 'expedicao', 'conferente'} 
 
@@ -14,7 +16,13 @@ class UserPermissions:
 
     def can_view_pedidos(self):
         return not self.roles.isdisjoint(self.PEDIDOS_VIEW_ROLES)
-
+    
+    def can_manage_frota(self):
+        return not self.roles.isdisjoint(self.FROTA_ROLES)
+    
+    def can_manage_rotas(self): # <-- ADICIONE ESTA FUNÇÃO
+        return not self.roles.isdisjoint(self.ROTA_ROLES)
+    
     def can_view_entregas(self):
         return not self.roles.isdisjoint(self.ENTREGA_ROLES)
 

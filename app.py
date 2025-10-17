@@ -113,6 +113,8 @@ def create_app():
         from routes.packing import packing_bp
         from routes.painel_retirada import painel_retirada_bp 
         from routes.mapa import mapa_bp 
+        from routes.frota import frota_bp
+        from routes.rotas import rotas_bp
 
         app.register_blueprint(auth_bp)
         app.register_blueprint(main_bp)
@@ -121,6 +123,8 @@ def create_app():
         app.register_blueprint(packing_bp)
         app.register_blueprint(painel_retirada_bp)
         app.register_blueprint(mapa_bp)
+        app.register_blueprint(frota_bp)
+        app.register_blueprint(rotas_bp)
 
         return app
 

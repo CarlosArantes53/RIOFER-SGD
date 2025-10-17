@@ -1,0 +1,50 @@
+{% extends "layout.html" %}
+
+{% block title %}Gerenciar Frota{% endblock %}
+
+{% block content %}
+    <h1>Gerenciar Frota de Veículos</h1>
+    <a href="{{ url_for('frota.create_veiculo') }}" class="btn">Adicionar Novo Veículo</a>
+    
+    {% if veiculos %}
+        <div class="table-container">
+            <table class="table-users">
+                <thead>
+                    <tr>
+                        <th>Placa</th>
+                        <th>Descrição</th>
+                        <th>Motorista</th>
+                        <th>Capacidade (KG)</th>
+                        <th>Tolerância (%)</th>
+                        <th>Status</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for v in veiculos %}
+                    <tr>
+                        <td><strong>{{ v.Placa }}</strong></td>
+                        <td>{{ v.Descricao }}</td>
+                        <td>{{ v.Nome_Motorista or 'N/A' }}</td>
+                        <td>{{ "%.0f"|format(v.Capacidade_KG|float) }} kg</td>
+                        <td>{{ "%.2f"|format((v.get('Tolerancia', 0) | float)) }} %</td>
+                        <td>
+                            <span class="status-tag status-{{ v.Status|lower|replace(' ', '-') }}">{{ v.Status }}</span>
+                        </td>
+                        <td class="action-buttons">
+                            <a href="{{ url_for('frota.edit_veiculo', veiculo_id=v.ID_Caminhao) }}" class="btn btn-secondary">Editar</a>
+                            <form action="{{ url_for('frota.delete_veiculo', veiculo_id=v.ID_Caminhao) }}" method="post" onsubmit="return confirm('Tem certeza que deseja excluir este veículo?');">
+                                <button type="submit" class="btn btn-danger">Excluir</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="box-container" style="text-align: center; margin-top: 2rem;">
+            <p>Nenhum veículo cadastrado ainda.</p>
+        </div>
+    {% endif %}
+{% endblock %}

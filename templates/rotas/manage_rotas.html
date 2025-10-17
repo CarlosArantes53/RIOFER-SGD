@@ -1,0 +1,51 @@
+{% extends "layout.html" %}
+
+{% block title %}Gerenciamento de Rotas{% endblock %}
+
+{% block content %}
+    <h1>Gerenciamento de Rotas</h1>
+    <a href="{{ url_for('rotas.planejamento_mapa') }}" class="btn">Planejar Nova Rota</a>
+    
+    {% if rotas %}
+        <div class="table-container">
+            <table class="table-users">
+                <thead>
+                    <tr>
+                        <th># Rota</th>
+                        <th>Data</th>
+                        <th>Caminhão</th>
+                        <th>Motorista</th>
+                        <th>Paradas</th>
+                        <th>Peso Total</th>
+                        <th>Status</th>
+                        <th>Tipo</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for rota in rotas %}
+                    <tr>
+                        <td><strong>#{{ rota.ID_Rota }}</strong></td>
+                        <td>{{ rota.Data_Rota.strftime('%d/%m/%Y') if rota.Data_Rota else 'N/A' }}</td>
+                        <td>{{ rota.Placa_Caminhao }}</td>
+                        <td>{{ rota.Nome_Motorista or 'N/A' }}</td>
+                        <td>{{ rota.Num_Paradas }}</td>
+                        <td>{{ "%.2f"|format(rota.Peso_Total_KG|float) }} kg</td>
+                        <td>
+                            <span class="status-tag status-{{ rota.Status|lower|replace(' ', '-') }}">{{ rota.Status }}</span>
+                        </td>
+                        <td>{{ rota.Tipo }}</td>
+                        <td class="action-buttons">
+                            <a href="#" class="btn btn-secondary">Ver Detalhes</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="box-container" style="text-align: center; margin-top: 2rem;">
+            <p>Nenhuma rota planejada ainda.</p>
+        </div>
+    {% endif %}
+{% endblock %}

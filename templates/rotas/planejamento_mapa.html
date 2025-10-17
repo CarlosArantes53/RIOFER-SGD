@@ -1,0 +1,137 @@
+{% extends "layout.html" %}
+
+{% block title %}Planejamento de Rota{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/mapa-entregas.css') }}">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<style>
+    .pedido-item { display: flex; align-items: center; gap: 1rem; }
+    .pedido-item input[type="checkbox"] { transform: scale(1.5); }
+    .planejamento-footer {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        background-color: var(--header-footer-bg);
+        padding: 1rem;
+        box-shadow: 0 -4px 10px rgba(0,0,0,0.2);
+        z-index: 1000;
+        transform: translateY(100%);
+        transition: transform 0.3s ease-in-out;
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+    }
+    .planejamento-footer.visible {
+        transform: translateY(0);
+    }
+    .modal {
+        /* Estilos do Modal (inicialmente escondido) */
+        display: none;
+        position: fixed;
+        z-index: 2000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0,0,0,0.6);
+    }
+    .modal-content {
+        background-color: var(--secondary-bg);
+        margin: 10% auto;
+        padding: 2rem;
+        border: 1px solid var(--border-color);
+        width: 80%;
+        max-width: 600px;
+        border-radius: var(--border-radius);
+    }
+</style>
+
+<h1>Planejamento de Nova Rota</h1>
+<p>Selecione os pedidos na barra lateral para montar uma nova rota de entrega.</p>
+
+<div class="map-container box-container" id="map-container">
+    <div class="sidebar" id="sidebar">
+        {% for pedido in pedidos %}
+            <div class="pedido-item" id="pedido-{{ pedido.AbsEntry }}" data-absentry="{{ pedido.AbsEntry }}" 
+                 data-lat="{{ pedido.Latitude }}" data-lon="{{ pedido.Longitude }}" data-cardname="{{ pedido.CardName }}"
+                 data-peso="{{ pedido.Peso }}">
+                <input type="checkbox" class="pedido-checkbox">
+                <div>
+                    <h4>{{ pedido.CardName }}</h4>
+                    <p><strong>Pedido:</strong> {{ pedido.AbsEntry }}</p>
+                    <p><strong>Peso Aprox:</strong> {{ "%.2f"|format(pedido.Peso|float) }} kg</p>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+    <div id="map-render"></div>
+</div>
+
+<div id="planejamento-footer" class="planejamento-footer">
+    <div><strong>Pedidos selecionados:</strong> <span id="count-pedidos">0</span></div>
+    <div><strong>Peso total:</strong> <span id="total-peso">0.00</span> kg</div>
+    <button id="btn-criar-rota" class="btn">Criar Rota</button>
+</div>
+
+<div id="rota-modal" class="modal">
+    <div class="modal-content">
+        <h2>Detalhes da Nova Rota</h2>
+        <form id="form-criar-rota" class="user-form">
+             <div class="form-grid">
+                <div class="input-group">
+                    <label for="data_rota">Data da Rota:</label>
+                    <input type="date" id="data_rota" name="data_rota" required>
+                </div>
+                <div class="input-group">
+                    <label for="id_caminhao">Caminhão:</label>
+                    <select id="id_caminhao" name="id_caminhao" required>
+                        <option value="">-- Selecione --</option>
+                        {% for c in caminhoes %}
+                        <option value="{{ c.ID_Caminhao }}">{{ c.Placa }} (Cap: {{ "%.0f"|format(c.Capacidade_KG|float) }} kg)</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>Tipo de Rota:</label>
+                    <select id="tipo_rota" name="tipo_rota">
+                        <option value="Normal">Normal</option>
+                        <option value="Pendente">Pendente (com meta)</option>
+                    </select>
+                </div>
+            </div>
+            <div id="campos-rota-pendente" style="display: none;" class="form-grid">
+                <div class="input-group">
+                    <label for="meta_kg">Meta de Peso (KG):</label>
+                    <input type="number" step="0.01" id="meta_kg" name="meta_kg">
+                </div>
+                <div class="input-group">
+                    <label for="data_limite">Data Limite para Atingir Meta:</label>
+                    <input type="date" id="data_limite" name="data_limite">
+                </div>
+            </div>
+            <div class="input-group">
+                <label for="observacoes">Observações:</label>
+                <textarea id="observacoes" name="observacoes" rows="3"></textarea>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn">Confirmar e Criar Rota</button>
+                <button type="button" class="btn btn-secondary" id="btn-cancelar-modal">Cancelar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Passando dados do Flask para o JavaScript
+    const locations = {{ locations_json|safe }};
+</script>
+<script src="{{ url_for('static', filename='js/planejamento-rota.js') }}" defer></script>
+{% endblock %}

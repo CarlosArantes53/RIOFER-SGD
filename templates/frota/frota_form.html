@@ -1,0 +1,61 @@
+{% extends 'layout.html' %}
+
+{% block title %}
+    {% if action == 'create' %}Adicionar Veículo{% else %}Editar Veículo{% endif %}
+{% endblock %}
+
+{% block content %}
+<h1>{% if action == 'create' %}Adicionar Novo Veículo{% else %}Editar Veículo {{ veiculo.Placa }}{% endif %}</h1>
+
+<div class="box-container">
+    <form method="post" class="user-form">
+        <div class="form-grid">
+            <div class="input-group">
+                <label for="placa">Placa do Veículo:</label>
+                <input type="text" id="placa" name="placa" value="{{ veiculo.Placa or '' }}" required 
+                       style="text-transform:uppercase" placeholder="ABC-1234">
+            </div>
+
+            <div class="input-group">
+                <label for="descricao">Descrição:</label>
+                <input type="text" id="descricao" name="descricao" value="{{ veiculo.Descricao or '' }}" 
+                       required placeholder="Ex: Caminhão Toco Azul">
+            </div>
+
+            <div class="input-group">
+                <label for="capacidade_kg">Capacidade de Carga (KG):</label>
+                <input type="number" step="0.01" id="capacidade_kg" name="capacidade_kg" 
+                       value="{{ veiculo.Capacidade_KG or '' }}" required>
+            </div>
+
+            <div class="input-group">
+                <label for="tolerancia">Toelrância de Carga (%):</label>
+                <input type="number" step="0.01" id="tolerancia" name="tolerancia" 
+                       value="{{ veiculo.Tolerancia or '' }}" required>
+            </div>
+            
+
+            <div class="input-group">
+                <label for="motorista">Motorista Designado:</label>
+                <select id="motorista" name="motorista">
+                    <option value="">-- Sem motorista --</option>
+                    {% for uid, data in motoristas.items() %}
+                    <option value="{{ uid }}" {% if veiculo.ID_Motorista == uid %}selected{% endif %}>
+                        {{ data.nome_sap or data.email }}
+                    </option>
+                    {% endfor %}
+                </select>
+                <small>A lista mostra apenas motoristas disponíveis.</small>
+            </div>
+
+        </div>
+
+        <div class="form-actions" style="margin-top: 2rem;">
+            <button type="submit" class="btn">
+                {% if action == 'create' %}Adicionar Veículo{% else %}Salvar Alterações{% endif %}
+            </button>
+            <a href="{{ url_for('frota.manage_frota') }}" class="btn btn-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
